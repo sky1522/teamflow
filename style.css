@@ -902,6 +902,7 @@ body {
 .right-sidebar {
     display: flex;
     flex-direction: column;
+    height: 100%;
 }
 
 .chat-section {
@@ -912,12 +913,14 @@ body {
     display: flex;
     flex-direction: column;
     height: 100%;
+    max-height: calc(100vh - 110px);
 }
 
 .chat-header {
     margin-bottom: 15px;
     padding-bottom: 15px;
     border-bottom: 2px solid var(--border-color);
+    flex-shrink: 0;
 }
 
 .chat-header h3 {
@@ -932,6 +935,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: 15px;
+    min-height: 0;
 }
 
 .chat-message {
@@ -986,6 +990,7 @@ body {
 .chat-input-section {
     display: flex;
     gap: 10px;
+    flex-shrink: 0;
 }
 
 #chatInput {
@@ -1299,6 +1304,7 @@ body {
 
     .chat-section {
         height: 500px;
+        max-height: 500px;
     }
 }
 
