@@ -64,6 +64,7 @@ function initEventListeners() {
     document.getElementById('createTeamBtn2').addEventListener('click', () => openModal('createTeamModal'));
     document.getElementById('joinTeamBtn').addEventListener('click', () => openModal('joinTeamModal'));
     document.getElementById('inviteMemberBtn').addEventListener('click', () => openModal('inviteMemberModal'));
+    document.getElementById('deleteTeamBtn').addEventListener('click', handleDeleteTeam);
 
     // 팀 생성 모달
     document.getElementById('confirmCreateTeam').addEventListener('click', handleCreateTeam);
@@ -309,6 +310,14 @@ async function handleTeamChange(e) {
 function displayTeamInfo() {
     document.getElementById('currentTeamName').textContent = currentTeam.name;
     loadTeamMembers();
+    
+    // 팀 삭제 버튼 표시 (관리자만)
+    const deleteBtn = document.getElementById('deleteTeamBtn');
+    if (currentTeam.createdBy === currentUser.uid) {
+        deleteBtn.style.display = 'block';
+    } else {
+        deleteBtn.style.display = 'none';
+    }
 }
 
 async function loadTeamMembers() {
@@ -444,6 +453,88 @@ async function handleJoinTeam() {
     } catch (error) {
         console.error('팀 참여 실패:', error);
         alert('팀 참여에 실패했습니다.');
+    }
+}
+
+async function handleDeleteTeam() {
+    if (!currentTeam) {
+        alert('선택된 팀이 없습니다.');
+        return;
+    }
+    
+    // 팀 생성자인지 확인
+    if (currentTeam.createdBy !== currentUser.uid) {
+        alert('팀을 삭제할 권한이 없습니다. (관리자만 삭제 가능)');
+        return;
+    }
+    
+    const confirmMessage = `정말로 "${currentTeam.name}" 팀을 삭제하시겠습니까?\n\n⚠️ 경고:\n- 팀의 모든 할일이 삭제됩니다.\n- 팀의 모든 채팅 기록이 삭제됩니다.\n- 팀의 모든 파일이 삭제됩니다.\n- 이 작업은 되돌릴 수 없습니다!`;
+    
+    if (!confirm(confirmMessage)) {
+        return;
+    }
+    
+    const doubleCheck = prompt('정말 삭제하시려면 팀 이름을 입력하세요:', '');
+    if (doubleCheck !== currentTeam.name) {
+        alert('팀 이름이 일치하지 않습니다. 삭제가 취소되었습니다.');
+        return;
+    }
+    
+    try {
+        const teamId = currentTeam.id;
+        
+        // 1. 팀 데이터 삭제
+        await database.ref('teams/' + teamId).remove();
+        
+        // 2. 팀원 정보 삭제
+        await database.ref('teamMembers/' + teamId).remove();
+        
+        // 3. 할일 삭제
+        await database.ref('todos/' + teamId).remove();
+        
+        // 4. 채팅 삭제
+        await database.ref('chat/' + teamId).remove();
+        
+        // 5. 댓글 삭제
+        await database.ref('comments/' + teamId).remove();
+        
+        // 6. 모든 사용자의 팀 목록에서 삭제
+        const memberSnapshot = await database.ref('teamMembers/' + teamId).once('value');
+        const members = memberSnapshot.val() || {};
+        for (const userId in members) {
+            await database.ref('userTeams/' + userId + '/' + teamId).remove();
+        }
+        
+        // 7. Storage에서 팀 파일 삭제 (선택사항 - 시간이 걸릴 수 있음)
+        try {
+            const storageRef = storage.ref('teams/' + teamId);
+            const filesList = await storageRef.listAll();
+            for (const fileRef of filesList.items) {
+                await fileRef.delete();
+            }
+        } catch (storageError) {
+            console.warn('파일 삭제 중 일부 오류:', storageError);
+        }
+        
+        // 8. 리스너 제거
+        removeRealtimeListeners();
+        
+        // 9. 현재 팀 초기화
+        currentTeam = null;
+        
+        // 10. 팀 목록 새로고침
+        await loadUserTeams();
+        
+        // 11. 화면 초기화
+        document.getElementById('teamSelector').value = '';
+        document.getElementById('noTeamSelected').style.display = 'flex';
+        document.getElementById('mainContent').style.display = 'none';
+        
+        alert('팀이 성공적으로 삭제되었습니다.');
+        
+    } catch (error) {
+        console.error('팀 삭제 실패:', error);
+        alert('팀 삭제에 실패했습니다: ' + error.message);
     }
 }
 
@@ -1024,17 +1115,28 @@ async function handleSendMessage() {
 }
 
 // ========== 실시간 리스너 ==========
+let currentListeners = {
+    todos: null,
+    chat: null,
+    members: null
+};
+
 function setupRealtimeListeners() {
     if (!currentTeam) return;
     
+    // 기존 리스너 제거
+    removeRealtimeListeners();
+    
     // 할일 변경 감지
-    database.ref('todos/' + currentTeam.id).on('value', () => {
+    currentListeners.todos = database.ref('todos/' + currentTeam.id);
+    currentListeners.todos.on('value', () => {
         renderTodos();
         renderCalendar();
     });
     
     // 채팅 메시지 변경 감지
-    database.ref('chat/' + currentTeam.id).on('child_added', (snapshot) => {
+    currentListeners.chat = database.ref('chat/' + currentTeam.id);
+    currentListeners.chat.on('child_added', (snapshot) => {
         const msg = snapshot.val();
         if (msg) {
             loadChatMessages();
@@ -1042,9 +1144,25 @@ function setupRealtimeListeners() {
     });
     
     // 팀원 변경 감지
-    database.ref('teamMembers/' + currentTeam.id).on('value', () => {
+    currentListeners.members = database.ref('teamMembers/' + currentTeam.id);
+    currentListeners.members.on('value', () => {
         loadTeamMembers();
     });
+}
+
+function removeRealtimeListeners() {
+    if (currentListeners.todos) {
+        currentListeners.todos.off();
+        currentListeners.todos = null;
+    }
+    if (currentListeners.chat) {
+        currentListeners.chat.off();
+        currentListeners.chat = null;
+    }
+    if (currentListeners.members) {
+        currentListeners.members.off();
+        currentListeners.members = null;
+    }
 }
 
 // ========== 유틸리티 ==========
