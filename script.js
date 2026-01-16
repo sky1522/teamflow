@@ -309,7 +309,7 @@ async function handleTeamChange(e) {
 
 function displayTeamInfo() {
     document.getElementById('currentTeamName').textContent = currentTeam.name;
-    loadTeamMembers();
+    // loadTeamMembers()는 실시간 리스너에서 자동으로 호출됨 (중복 방지)
     
     // 팀 삭제 버튼 표시 (관리자만)
     const deleteBtn = document.getElementById('deleteTeamBtn');
