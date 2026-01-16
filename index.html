@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TeamFlow - 팀 프로젝트 관리</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- 로그인 화면 -->
+    <div id="authScreen" class="auth-screen">
+        <div class="auth-container">
+            <div class="auth-logo">
+                <h1>🚀 TeamFlow</h1>
+                <p>팀 프로젝트를 쉽고 빠르게</p>
+            </div>
+            
+            <div class="auth-tabs">
+                <button class="auth-tab active" data-tab="login">로그인</button>
+                <button class="auth-tab" data-tab="signup">회원가입</button>
+            </div>
+            
+            <!-- 로그인 폼 -->
+            <div id="loginForm" class="auth-form active">
+                <input type="email" id="loginEmail" placeholder="이메일" autocomplete="email">
+                <input type="password" id="loginPassword" placeholder="비밀번호" autocomplete="current-password">
+                <button id="loginBtn" class="btn-primary">로그인</button>
+                <div class="divider">또는</div>
+                <button id="googleLoginBtn" class="btn-google">
+                    <span class="google-icon">G</span>
+                    Google로 로그인
+                </button>
+            </div>
+            
+            <!-- 회원가입 폼 -->
+            <div id="signupForm" class="auth-form">
+                <input type="text" id="signupName" placeholder="이름" autocomplete="name">
+                <input type="email" id="signupEmail" placeholder="이메일" autocomplete="email">
+                <input type="password" id="signupPassword" placeholder="비밀번호 (최소 6자)" autocomplete="new-password">
+                <button id="signupBtn" class="btn-primary">회원가입</button>
+                <div class="divider">또는</div>
+                <button id="googleSignupBtn" class="btn-google">
+                    <span class="google-icon">G</span>
+                    Google로 가입
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 메인 앱 화면 -->
+    <div id="appScreen" class="app-screen" style="display: none;">
+        <!-- 상단 네비게이션 -->
+        <nav class="top-nav">
+            <div class="nav-left">
+                <h1 class="app-title">🚀 TeamFlow</h1>
+                <select id="teamSelector" class="team-selector">
+                    <option value="">팀 선택...</option>
+                </select>
+            </div>
+            <div class="nav-right">
+                <button id="notificationBtn" class="icon-btn">
+                    🔔
+                    <span id="notificationBadge" class="badge" style="display: none;">0</span>
+                </button>
+                <div class="user-menu">
+                    <button id="userMenuBtn" class="user-avatar">
+                        <span id="userInitial">U</span>
+                    </button>
+                    <div id="userDropdown" class="dropdown-menu">
+                        <div class="user-info">
+                            <strong id="userName">사용자</strong>
+                            <small id="userEmail">user@email.com</small>
+                        </div>
+                        <hr>
+                        <button id="createTeamBtn" class="dropdown-item">➕ 새 팀 만들기</button>
+                        <button id="joinTeamBtn" class="dropdown-item">👥 팀 참여하기</button>
+                        <hr>
+                        <button id="logoutBtn" class="dropdown-item">🚪 로그아웃</button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 팀 선택 안내 -->
+        <div id="noTeamSelected" class="empty-state-full">
+            <h2>👈 팀을 선택하거나 새로 만들어보세요</h2>
+            <p>팀을 선택하면 일정, 채팅, 파일을 함께 관리할 수 있습니다</p>
+            <button id="createTeamBtn2" class="btn-primary-large">➕ 새 팀 만들기</button>
+        </div>
+
+        <!-- 메인 컨텐츠 -->
+        <div id="mainContent" class="main-content" style="display: none;">
+            <div class="app-container">
+                <!-- 왼쪽: 달력 & 팀 정보 -->
+                <div class="left-sidebar">
+                    <!-- 팀 정보 -->
+                    <div class="team-info-card">
+                        <h3 id="currentTeamName">팀 이름</h3>
+                        <div class="team-members">
+                            <div class="members-header">
+                                <span>팀원 (<span id="memberCount">0</span>)</span>
+                                <button id="inviteMemberBtn" class="btn-small">초대</button>
+                            </div>
+                            <div id="membersList" class="members-list"></div>
+                        </div>
+                    </div>
+
+                    <!-- 달력 -->
+                    <div class="calendar-section">
+                        <div class="calendar-header">
+                            <button id="prevMonth" class="month-nav">‹</button>
+                            <h2 id="currentMonth">2026년 1월</h2>
+                            <button id="nextMonth" class="month-nav">›</button>
+                        </div>
+                        <div class="calendar-weekdays">
+                            <div>일</div>
+                            <div>월</div>
+                            <div>화</div>
+                            <div>수</div>
+                            <div>목</div>
+                            <div>금</div>
+                            <div>토</div>
+                        </div>
+                        <div id="calendarDays" class="calendar-days"></div>
+                    </div>
+                </div>
+
+                <!-- 중앙: 할일 관리 -->
+                <div class="center-content">
+                    <div class="content-header">
+                        <div>
+                            <h2 id="selectedDate"></h2>
+                            <div class="date-type" id="dateType"></div>
+                        </div>
+                    </div>
+
+                    <div class="input-section">
+                        <input 
+                            type="text" 
+                            id="todoInput" 
+                            placeholder="새로운 할일을 입력하세요..." 
+                            autocomplete="off"
+                        >
+                        <label class="file-upload-label" for="fileInput" title="파일 첨부">
+                            📎
+                        </label>
+                        <input type="file" id="fileInput" style="display: none;" multiple>
+                        <button id="addBtn" class="btn-add">추가</button>
+                    </div>
+
+                    <div id="attachedFiles" class="attached-files"></div>
+
+                    <div class="filter-section">
+                        <button class="filter-btn active" data-filter="all">전체</button>
+                        <button class="filter-btn" data-filter="active">진행중</button>
+                        <button class="filter-btn" data-filter="completed">완료</button>
+                    </div>
+
+                    <div class="stats">
+                        <span>전체: <strong id="totalCount">0</strong></span>
+                        <span>진행중: <strong id="activeCount">0</strong></span>
+                        <span>완료: <strong id="completedCount">0</strong></span>
+                    </div>
+
+                    <ul id="todoList" class="todo-list"></ul>
+
+                    <div class="actions">
+                        <button id="clearCompleted" class="btn-clear">완료된 항목 삭제</button>
+                    </div>
+                </div>
+
+                <!-- 오른쪽: 채팅 -->
+                <div class="right-sidebar">
+                    <div class="chat-section">
+                        <div class="chat-header">
+                            <h3>💬 팀 채팅</h3>
+                        </div>
+                        <div id="chatMessages" class="chat-messages"></div>
+                        <div class="chat-input-section">
+                            <input 
+                                type="text" 
+                                id="chatInput" 
+                                placeholder="메시지를 입력하세요..." 
+                                autocomplete="off"
+                            >
+                            <button id="sendChatBtn" class="btn-send">전송</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 모달: 팀 생성 -->
+    <div id="createTeamModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>새 팀 만들기</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="newTeamName" placeholder="팀 이름" class="modal-input">
+                <textarea id="newTeamDesc" placeholder="팀 설명 (선택사항)" class="modal-textarea"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button id="cancelCreateTeam" class="btn-secondary">취소</button>
+                <button id="confirmCreateTeam" class="btn-primary">만들기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 모달: 팀 참여 -->
+    <div id="joinTeamModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>팀 참여하기</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="teamCode" placeholder="팀 코드 입력" class="modal-input">
+                <p class="modal-hint">팀 관리자로부터 받은 팀 코드를 입력하세요</p>
+            </div>
+            <div class="modal-footer">
+                <button id="cancelJoinTeam" class="btn-secondary">취소</button>
+                <button id="confirmJoinTeam" class="btn-primary">참여하기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 모달: 팀원 초대 -->
+    <div id="inviteMemberModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>팀원 초대하기</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <label class="modal-label">팀 코드를 공유하세요:</label>
+                <div class="code-display">
+                    <code id="displayTeamCode">XXXXXX</code>
+                    <button id="copyTeamCode" class="btn-icon" title="복사">📋</button>
+                </div>
+                <p class="modal-hint">이 코드를 팀원에게 공유하면 팀에 참여할 수 있습니다</p>
+            </div>
+            <div class="modal-footer">
+                <button id="closeInviteModal" class="btn-primary">닫기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 모달: 할일 상세 (댓글) -->
+    <div id="todoDetailModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3 id="todoDetailTitle">할일 상세</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="todo-detail-info">
+                    <p><strong>생성자:</strong> <span id="todoCreator"></span></p>
+                    <p><strong>생성일:</strong> <span id="todoCreatedAt"></span></p>
+                    <div id="todoFiles" class="todo-detail-files"></div>
+                </div>
+                <hr>
+                <h4>💬 댓글</h4>
+                <div id="commentsList" class="comments-list"></div>
+                <div class="comment-input-section">
+                    <textarea id="commentInput" placeholder="댓글을 입력하세요..." class="comment-textarea"></textarea>
+                    <button id="addCommentBtn" class="btn-primary">댓글 작성</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+    
+    <script src="firebase-config.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
