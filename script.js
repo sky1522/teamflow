@@ -694,14 +694,6 @@ async function updateTeamName() {
         alert('팀 이름 수정에 실패했습니다.');
     }
 }
-        
-        // 팀원 목록 새로고침
-        loadTeamMembers();
-    } catch (error) {
-        console.error('닉네임 저장 실패:', error);
-        alert('닉네임 저장에 실패했습니다.');
-    }
-}
 
 // ========== 모달 관리 ==========
 function openModal(modalId) {
