@@ -1480,7 +1480,7 @@ body {
     top: auto;
     left: auto;
     right: 20px;
-    bottom: 100px;
+    bottom: 80px;
     width: auto;
     height: auto;
     background: transparent;
@@ -1490,11 +1490,13 @@ body {
 }
 
 #emojiReactionModal .modal-content {
-    max-width: 280px;
-    width: 280px;
+    max-width: 240px;
+    width: 240px;
     margin: 0;
+    padding: 10px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
     animation: slideUp 0.2s ease;
+    border-radius: 12px;
 }
 
 @keyframes slideUp {
@@ -1508,29 +1510,21 @@ body {
     }
 }
 
-#emojiReactionModal .modal-header {
-    padding: 10px 12px;
-}
-
-#emojiReactionModal .modal-header h3 {
-    font-size: 0.9rem;
-}
-
 #emojiReactionModal .modal-body {
-    padding: 12px;
+    padding: 0;
 }
 
 /* 이모지 그리드 */
 .emoji-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 6px;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4px;
 }
 
 .emoji-btn {
     font-size: 1.5rem;
-    padding: 10px;
-    border: 1px solid var(--border-color);
+    padding: 8px;
+    border: none;
     border-radius: 8px;
     background: white;
     cursor: pointer;
