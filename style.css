@@ -1192,6 +1192,94 @@ body {
     justify-content: flex-end;
 }
 
+/* 답장 미리보기 */
+.reply-preview {
+    display: flex;
+    gap: 8px;
+    padding: 8px;
+    margin-bottom: 6px;
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.reply-preview:hover {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.reply-bar {
+    width: 3px;
+    background: var(--primary-color);
+    border-radius: 2px;
+}
+
+.reply-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+
+.reply-author {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.reply-text {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* 이모지 반응 표시 */
+.message-reactions {
+    display: flex;
+    gap: 4px;
+    margin-top: 4px;
+    flex-wrap: wrap;
+}
+
+.reaction-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 8px;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.reaction-badge:hover {
+    background: var(--bg-gray);
+    transform: scale(1.05);
+}
+
+.chat-message.own .message-reactions {
+    justify-content: flex-end;
+}
+
+/* 메시지 강조 효과 */
+.highlight-message {
+    animation: highlightPulse 1s ease;
+}
+
+@keyframes highlightPulse {
+    0%, 100% {
+        background: transparent;
+    }
+    50% {
+        background: rgba(100, 149, 237, 0.2);
+    }
+}
+
 .chat-input-section {
     display: flex;
     gap: 10px;

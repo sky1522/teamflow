@@ -1382,17 +1382,32 @@ function handleReply(messageId) {
     chatInput.dataset.replyTo = messageId;
 }
 
+// 원문 메시지로 스크롤
+function scrollToMessage(messageId) {
+    const messageElement = document.getElementById(`msg-${messageId}`);
+    if (messageElement) {
+        messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        // 강조 효과
+        messageElement.classList.add('highlight-message');
+        setTimeout(() => {
+            messageElement.classList.remove('highlight-message');
+        }, 2000);
+    }
+}
+
 async function loadChatMessages() {
     if (!currentTeam) return;
     
     try {
-        const [messagesSnapshot, usersSnapshot, nicknamesSnapshot] = await Promise.all([
+        const [messagesSnapshot, usersSnapshot, nicknamesSnapshot, reactionsSnapshot] = await Promise.all([
             database.ref('chat/' + currentTeam.id)
                 .orderByChild('timestamp')
                 .limitToLast(50)
                 .once('value'),
             database.ref('users').once('value'),
-            database.ref('teamNicknames/' + currentTeam.id).once('value')
+            database.ref('teamNicknames/' + currentTeam.id).once('value'),
+            database.ref('chatReactions/' + currentTeam.id).once('value')
         ]);
         
         const messages = [];
@@ -1402,15 +1417,16 @@ async function loadChatMessages() {
         
         const users = usersSnapshot.val() || {};
         const nicknames = nicknamesSnapshot.val() || {};
+        const reactions = reactionsSnapshot.val() || {};
         
-        displayChatMessages(messages, users, nicknames);
+        displayChatMessages(messages, users, nicknames, reactions);
         
     } catch (error) {
         console.error('채팅 메시지 로딩 실패:', error);
     }
 }
 
-async function displayChatMessages(messages, users = null, nicknames = null) {
+async function displayChatMessages(messages, users = null, nicknames = null, reactions = null) {
     const chatMessages = document.getElementById('chatMessages');
     
     if (messages.length === 0) {
@@ -1420,20 +1436,46 @@ async function displayChatMessages(messages, users = null, nicknames = null) {
     
     // users가 없으면 가져오기
     if (!users) {
-        const [usersSnapshot, nicknamesSnapshot] = await Promise.all([
+        const [usersSnapshot, nicknamesSnapshot, reactionsSnapshot] = await Promise.all([
             database.ref('users').once('value'),
-            database.ref('teamNicknames/' + currentTeam.id).once('value')
+            database.ref('teamNicknames/' + currentTeam.id).once('value'),
+            database.ref('chatReactions/' + currentTeam.id).once('value')
         ]);
         users = usersSnapshot.val() || {};
         nicknames = nicknamesSnapshot.val() || {};
+        reactions = reactionsSnapshot.val() || {};
     }
     
     chatMessages.innerHTML = messages.map((msg, index) => {
         const isOwn = msg.userId === currentUser.uid;
-        const time = new Date(msg.timestamp).toLocaleTimeString('ko-KR', {
-            hour: '2-digit',
-            minute: '2-digit'
-        });
+        
+        // 시간 형식 개선
+        const messageDate = new Date(msg.timestamp);
+        const now = new Date();
+        const isThisYear = messageDate.getFullYear() === now.getFullYear();
+        const isToday = messageDate.toDateString() === now.toDateString();
+        
+        let time;
+        if (!isThisYear) {
+            // 작년: 2025년 12월 31일
+            time = messageDate.toLocaleDateString('ko-KR', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        } else if (!isToday) {
+            // 올해 다른 날: 12월 31일
+            time = messageDate.toLocaleDateString('ko-KR', {
+                month: 'long',
+                day: 'numeric'
+            });
+        } else {
+            // 오늘: 오후 10:07
+            time = messageDate.toLocaleTimeString('ko-KR', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
         
         const user = users[msg.userId] || {};
         const profilePhoto = user.profilePhotoURL || null;
@@ -1458,17 +1500,57 @@ async function displayChatMessages(messages, users = null, nicknames = null) {
             prevMsg.userId === msg.userId && 
             (msg.timestamp - prevMsg.timestamp) < 60000; // 1분 이내
         
+        // 답장 정보
+        let replyHTML = '';
+        if (msg.replyTo) {
+            const replyMsg = messages.find(m => m.id === msg.replyTo);
+            if (replyMsg) {
+                const replyText = replyMsg.text.substring(0, 30) + (replyMsg.text.length > 30 ? '...' : '');
+                replyHTML = `
+                    <div class="reply-preview" onclick="scrollToMessage('${msg.replyTo}')">
+                        <div class="reply-bar"></div>
+                        <div class="reply-content">
+                            <span class="reply-author">${escapeHtml(replyMsg.userName || '사용자')}</span>
+                            <span class="reply-text">${escapeHtml(replyText)}</span>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+        
+        // 이모지 반응
+        const msgReactions = reactions?.[msg.id] || {};
+        const reactionCounts = {};
+        Object.values(msgReactions).forEach(reaction => {
+            if (reaction.emoji) {
+                reactionCounts[reaction.emoji] = (reactionCounts[reaction.emoji] || 0) + 1;
+            }
+        });
+        
+        let reactionsHTML = '';
+        if (Object.keys(reactionCounts).length > 0) {
+            reactionsHTML = `
+                <div class="message-reactions">
+                    ${Object.entries(reactionCounts).map(([emoji, count]) => 
+                        `<span class="reaction-badge">${emoji} ${count}</span>`
+                    ).join('')}
+                </div>
+            `;
+        }
+        
         if (isOwn) {
             // 내 메시지 (오른쪽, 노란색) - 프로필/이름 제거
             return `
-                <div class="chat-message own">
+                <div class="chat-message own" id="msg-${msg.id}">
                     <div class="chat-message-content">
+                        ${replyHTML}
                         <div class="chat-message-footer">
                             <span class="chat-message-bubble-time">${time}</span>
                             <div class="chat-message-bubble" data-message-id="${msg.id}">
                                 ${escapeHtml(msg.text)}
                             </div>
                         </div>
+                        ${reactionsHTML}
                         <div class="chat-message-actions">
                             <button class="btn-emoji-react" data-message-id="${msg.id}" title="반응">😊</button>
                             <button class="btn-reply" data-message-id="${msg.id}" title="답장">↩️</button>
@@ -1479,7 +1561,7 @@ async function displayChatMessages(messages, users = null, nicknames = null) {
         } else {
             // 상대방 메시지 (왼쪽, 흰색)
             return `
-                <div class="chat-message">
+                <div class="chat-message" id="msg-${msg.id}">
                     ${!isContinuous ? `<div class="${avatarClass}">${avatarContent}</div>` : '<div style="width: 40px;"></div>'}
                     <div class="chat-message-content">
                         ${!isContinuous ? `
@@ -1487,12 +1569,14 @@ async function displayChatMessages(messages, users = null, nicknames = null) {
                                 <span class="chat-message-author">${escapeHtml(displayName)}</span>
                             </div>
                         ` : ''}
+                        ${replyHTML}
                         <div class="chat-message-footer">
                             <div class="chat-message-bubble" data-message-id="${msg.id}">
                                 ${escapeHtml(msg.text)}
                             </div>
                             <span class="chat-message-bubble-time">${time}</span>
                         </div>
+                        ${reactionsHTML}
                         <div class="chat-message-actions">
                             <button class="btn-emoji-react" data-message-id="${msg.id}" title="반응">😊</button>
                             <button class="btn-reply" data-message-id="${msg.id}" title="답장">↩️</button>
