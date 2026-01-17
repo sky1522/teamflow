@@ -1061,9 +1061,9 @@ body {
 
 .chat-message {
     display: flex;
-    gap: 10px;
+    gap: 8px;
     animation: fadeIn 0.3s ease;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
     position: relative;
     align-items: flex-start;
 }
@@ -1085,8 +1085,8 @@ body {
 
 /* 채팅 프로필 아바타 */
 .chat-avatar {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
     background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
     color: white;
@@ -1094,7 +1094,7 @@ body {
     align-items: center;
     justify-content: center;
     font-weight: bold;
-    font-size: 0.95rem;
+    font-size: 0.85rem;
     flex-shrink: 0;
     overflow: hidden;
 }
@@ -1124,17 +1124,19 @@ body {
 .chat-message-header {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 0.85rem;
+    gap: 6px;
+    font-size: 0.8rem;
+    margin-bottom: 2px;
 }
 
 .chat-message-author {
     font-weight: 600;
     color: var(--text-primary);
+    font-size: 0.8rem;
 }
 
 .chat-message-time {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     color: var(--text-secondary);
 }
 
@@ -1150,13 +1152,14 @@ body {
 }
 
 .chat-message-bubble {
-    padding: 10px 14px;
-    border-radius: 18px;
+    padding: 8px 12px;
+    border-radius: 15px;
     background: white;
     border: 1px solid var(--border-color);
     word-break: break-word;
-    line-height: 1.5;
-    font-size: 0.95rem;
+    line-height: 1.4;
+    font-size: 0.85rem;
+    max-width: 400px;
 }
 
 .chat-message.own .chat-message-bubble {
@@ -1166,10 +1169,11 @@ body {
 }
 
 .chat-message-bubble-time {
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     color: var(--text-secondary);
     align-self: flex-end;
     white-space: nowrap;
+    margin: 0 4px;
 }
 
 /* 메시지 액션 버튼 */
