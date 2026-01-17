@@ -1401,6 +1401,51 @@ async function handleReactionClick(messageId, emoji) {
     }
 }
 
+// 공감한 사용자 목록 표시
+async function showReactionUsers(messageId, emoji, userIdsStr) {
+    const userIds = userIdsStr.split(',');
+    
+    try {
+        // 사용자 정보 가져오기
+        const usersSnapshot = await database.ref('users').once('value');
+        const users = usersSnapshot.val() || {};
+        
+        // 닉네임 정보 가져오기
+        const nicknamesSnapshot = await database.ref(`teamNicknames/${currentTeam.id}`).once('value');
+        const nicknames = nicknamesSnapshot.val() || {};
+        
+        const reactionUsersList = document.getElementById('reactionUsersList');
+        
+        reactionUsersList.innerHTML = `
+            <div style="text-align: center; padding: 10px; border-bottom: 1px solid #eee; background: #f9f9f9;">
+                <span style="font-size: 2rem;">${emoji}</span>
+            </div>
+            ${userIds.map(userId => {
+                const user = users[userId] || {};
+                const userName = user.name || '사용자';
+                const profilePhoto = user.profilePhotoURL || null;
+                const nickname = nicknames?.[userId]?.nickname || null;
+                const displayName = nickname ? `${userName}(${nickname})` : userName;
+                
+                const avatarContent = profilePhoto 
+                    ? `<img src="${profilePhoto}" alt="${userName}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">` 
+                    : `<div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #6B8DD6, #8E37D7); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold;">${userName.charAt(0).toUpperCase()}</div>`;
+                
+                return `
+                    <div style="display: flex; align-items: center; padding: 12px; border-bottom: 1px solid #f0f0f0;">
+                        ${avatarContent}
+                        <span style="margin-left: 12px; font-size: 0.9rem; color: #333;">${escapeHtml(displayName)}</span>
+                    </div>
+                `;
+            }).join('')}
+        `;
+        
+        openModal('reactionUsersModal');
+    } catch (error) {
+        console.error('공감 사용자 로딩 실패:', error);
+    }
+}
+
 // 이모지 선택
 async function handleEmojiSelect(event) {
     const emoji = event.target.dataset.emoji;
@@ -1639,7 +1684,8 @@ async function displayChatMessages(messages, users = null, nicknames = null, rea
                     ${Object.entries(reactionCounts).map(([emoji, count]) => {
                         const userReacted = reactionUsers[emoji].includes(currentUser.uid);
                         const reactionClass = userReacted ? 'reaction-badge my-reaction' : 'reaction-badge';
-                        return `<span class="${reactionClass}" data-message-id="${msg.id}" data-emoji="${emoji}" onclick="handleReactionClick('${msg.id}', '${emoji}')">${emoji} ${count}</span>`;
+                        const userIdsStr = reactionUsers[emoji].join(',');
+                        return `<span class="${reactionClass}" data-message-id="${msg.id}" data-emoji="${emoji}" data-user-ids="${userIdsStr}" onclick="showReactionUsers('${msg.id}', '${emoji}', '${userIdsStr}')">${emoji} ${count}</span>`;
                     }).join('')}
                 </div>
             `;
