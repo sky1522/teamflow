@@ -203,6 +203,9 @@ function initEventListeners() {
     // 프로필 사진 업로드
     document.getElementById('profilePhotoInput').addEventListener('change', handleProfilePhotoUpload);
     
+    // 답장 취소
+    document.getElementById('cancelReply')?.addEventListener('click', cancelReply);
+    
     // 이모지 반응 및 답장 (이벤트 위임)
     document.getElementById('chatMessages')?.addEventListener('click', handleChatAction);
     
@@ -1366,20 +1369,45 @@ async function handleEmojiSelect(event) {
 }
 
 // 답장 기능
+let currentReplyMessage = null;
+
 function handleReply(messageId) {
-    // 답장할 메시지 정보 저장
+    // 답장할 메시지 찾기
     const messageBubble = document.querySelector(`[data-message-id="${messageId}"]`);
     if (!messageBubble) return;
     
-    const messageText = messageBubble.textContent;
+    const messageText = messageBubble.textContent.trim();
     
-    // 입력창에 답장 표시
-    const chatInput = document.getElementById('chatInput');
-    chatInput.value = `@답장: "${messageText.substring(0, 30)}${messageText.length > 30 ? '...' : ''}" `;
-    chatInput.focus();
+    // 메시지 작성자 찾기
+    const messageElement = document.getElementById(`msg-${messageId}`);
+    const authorElement = messageElement?.querySelector('.chat-message-author');
+    const authorName = authorElement ? authorElement.textContent : '사용자';
     
-    // 답장 원본 메시지 ID 저장
-    chatInput.dataset.replyTo = messageId;
+    // 답장 정보 저장
+    currentReplyMessage = {
+        id: messageId,
+        text: messageText,
+        author: authorName
+    };
+    
+    // 답장 미리보기 섹션 표시
+    const replySection = document.getElementById('replyPreviewSection');
+    const replyToName = document.getElementById('replyToName');
+    const replyToText = document.getElementById('replyToText');
+    
+    replyToName.textContent = `${authorName}에게 답장`;
+    replyToText.textContent = messageText.substring(0, 50) + (messageText.length > 50 ? '...' : '');
+    
+    replySection.style.display = 'block';
+    
+    // 입력창에 포커스
+    document.getElementById('chatInput').focus();
+}
+
+// 답장 취소
+function cancelReply() {
+    currentReplyMessage = null;
+    document.getElementById('replyPreviewSection').style.display = 'none';
 }
 
 // 원문 메시지로 스크롤
@@ -1618,14 +1646,18 @@ async function handleSendMessage() {
         };
         
         // 답장인 경우 원본 메시지 ID 추가
-        if (chatInput.dataset.replyTo) {
-            messageData.replyTo = chatInput.dataset.replyTo;
-            delete chatInput.dataset.replyTo;
+        if (currentReplyMessage) {
+            messageData.replyTo = currentReplyMessage.id;
         }
         
         await messageRef.set(messageData);
         
         chatInput.value = '';
+        
+        // 답장 미리보기 숨기기
+        if (currentReplyMessage) {
+            cancelReply();
+        }
         
     } catch (error) {
         console.error('메시지 전송 실패:', error);

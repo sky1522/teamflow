@@ -182,6 +182,18 @@
                             <h3>💬 팀 채팅</h3>
                         </div>
                         <div id="chatMessages" class="chat-messages"></div>
+                        
+                        <!-- 답장 미리보기 영역 -->
+                        <div id="replyPreviewSection" class="reply-preview-section" style="display: none;">
+                            <div class="reply-preview-header">
+                                <div class="reply-preview-info">
+                                    <span class="reply-preview-to" id="replyToName"></span>
+                                    <span class="reply-preview-text" id="replyToText"></span>
+                                </div>
+                                <button id="cancelReply" class="btn-cancel-reply">&times;</button>
+                            </div>
+                        </div>
+                        
                         <div class="chat-input-section">
                             <input 
                                 type="text" 
