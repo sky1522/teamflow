@@ -223,6 +223,15 @@ function initEventListeners() {
             currentReactionMessageId = null;
         }
     });
+    
+    // 공감한 친구 모달 외부 클릭 시 닫기
+    document.getElementById('reactionUsersModal')?.addEventListener('click', (e) => {
+        if (e.target.id === 'reactionUsersModal') {
+            const modal = document.getElementById('reactionUsersModal');
+            modal.classList.remove('active');
+            modal.style.display = 'none';
+        }
+    });
 }
 
 // ========== 인증 함수 ==========
@@ -1402,7 +1411,7 @@ async function handleReactionClick(messageId, emoji) {
 }
 
 // 공감한 사용자 목록 표시
-async function showReactionUsers(messageId, emoji, userIdsStr) {
+async function showReactionUsers(event, messageId, emoji, userIdsStr) {
     const userIds = userIdsStr.split(',');
     
     try {
@@ -1417,8 +1426,8 @@ async function showReactionUsers(messageId, emoji, userIdsStr) {
         const reactionUsersList = document.getElementById('reactionUsersList');
         
         reactionUsersList.innerHTML = `
-            <div style="text-align: center; padding: 10px; border-bottom: 1px solid #eee; background: #f9f9f9;">
-                <span style="font-size: 2rem;">${emoji}</span>
+            <div style="text-align: center; padding: 8px; border-bottom: 1px solid #eee; background: #f9f9f9; font-weight: 600; font-size: 0.85rem;">
+                전체 ${userIds.length}명
             </div>
             ${userIds.map(userId => {
                 const user = users[userId] || {};
@@ -1428,19 +1437,39 @@ async function showReactionUsers(messageId, emoji, userIdsStr) {
                 const displayName = nickname ? `${userName}(${nickname})` : userName;
                 
                 const avatarContent = profilePhoto 
-                    ? `<img src="${profilePhoto}" alt="${userName}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">` 
-                    : `<div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #6B8DD6, #8E37D7); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold;">${userName.charAt(0).toUpperCase()}</div>`;
+                    ? `<div style="width: 32px; height: 32px; border-radius: 50%; overflow: hidden; flex-shrink: 0;"><img src="${profilePhoto}" alt="${userName}" style="width: 100%; height: 100%; object-fit: cover;"></div>` 
+                    : `<div style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #6B8DD6, #8E37D7); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.75rem; flex-shrink: 0;">${userName.charAt(0).toUpperCase()}</div>`;
                 
                 return `
-                    <div style="display: flex; align-items: center; padding: 12px; border-bottom: 1px solid #f0f0f0;">
+                    <div style="display: flex; align-items: center; padding: 10px 12px; border-bottom: 1px solid #f5f5f5;">
                         ${avatarContent}
-                        <span style="margin-left: 12px; font-size: 0.9rem; color: #333;">${escapeHtml(displayName)}</span>
+                        <span style="margin-left: 10px; font-size: 0.85rem; color: #333;">${escapeHtml(displayName)}</span>
                     </div>
                 `;
             }).join('')}
         `;
         
-        openModal('reactionUsersModal');
+        // 모달을 팝오버처럼 버튼 근처에 표시
+        const modal = document.getElementById('reactionUsersModal');
+        const modalContent = modal.querySelector('.modal-content');
+        
+        modal.style.display = 'flex';
+        
+        // 클릭한 버튼의 위치 계산
+        const btnRect = event.target.getBoundingClientRect();
+        const left = btnRect.left - 150; // 팝업 왼쪽으로 약간 이동
+        const top = btnRect.bottom + 5;
+        
+        // 화면 밖으로 나가지 않도록 조정
+        const maxLeft = window.innerWidth - 210;
+        const maxTop = window.innerHeight - 350;
+        
+        modalContent.style.position = 'fixed';
+        modalContent.style.left = Math.max(10, Math.min(left, maxLeft)) + 'px';
+        modalContent.style.top = Math.min(top, maxTop) + 'px';
+        modalContent.style.margin = '0';
+        
+        modal.classList.add('active');
     } catch (error) {
         console.error('공감 사용자 로딩 실패:', error);
     }
@@ -1685,7 +1714,10 @@ async function displayChatMessages(messages, users = null, nicknames = null, rea
                         const userReacted = reactionUsers[emoji].includes(currentUser.uid);
                         const reactionClass = userReacted ? 'reaction-badge my-reaction' : 'reaction-badge';
                         const userIdsStr = reactionUsers[emoji].join(',');
-                        return `<span class="${reactionClass}" data-message-id="${msg.id}" data-emoji="${emoji}" data-user-ids="${userIdsStr}" onclick="showReactionUsers('${msg.id}', '${emoji}', '${userIdsStr}')">${emoji} ${count}</span>`;
+                        return `
+                            <span class="${reactionClass}" data-message-id="${msg.id}" data-emoji="${emoji}" onclick="handleReactionClick('${msg.id}', '${emoji}')">${emoji} ${count}</span>
+                            <button class="btn-show-reaction-users" data-message-id="${msg.id}" data-emoji="${emoji}" data-user-ids="${userIdsStr}" onclick="event.stopPropagation(); showReactionUsers(event, '${msg.id}', '${emoji}', '${userIdsStr}')">👤</button>
+                        `;
                     }).join('')}
                 </div>
             `;

@@ -1304,11 +1304,33 @@ body {
     display: flex;
     gap: 4px;
     flex-wrap: wrap;
+    align-items: center;
 }
 
 .chat-message.own .message-reactions {
     left: auto;
     right: 0;
+}
+
+.btn-show-reaction-users {
+    width: 20px;
+    height: 20px;
+    border: none;
+    background: #f5f5f5;
+    border-radius: 50%;
+    font-size: 0.65rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    margin-left: 2px;
+    transition: all 0.2s ease;
+}
+
+.btn-show-reaction-users:hover {
+    background: #e0e0e0;
+    transform: scale(1.1);
 }
 
 .reaction-badge {
@@ -1353,6 +1375,31 @@ body {
     50% {
         background: rgba(100, 149, 237, 0.2);
     }
+}
+
+/* 공감한 친구 목록 팝오버 */
+.reaction-users-modal.modal {
+    position: fixed;
+    background: transparent;
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding: 0;
+}
+
+.reaction-users-modal.active {
+    display: block;
+}
+
+.reaction-users-modal .modal-content {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    animation: slideUp 0.15s ease;
+}
+
+.reaction-users-modal .modal-body {
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 /* 답장 미리보기 섹션 (입력창 위) */
