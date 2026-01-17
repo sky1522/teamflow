@@ -1350,12 +1350,23 @@ async function handleEmojiSelect(event) {
     if (!emoji || !currentReactionMessageId) return;
     
     try {
-        // Firebase에 반응 저장
-        await database.ref(`chatReactions/${currentTeam.id}/${currentReactionMessageId}/${currentUser.uid}`).set({
-            emoji: emoji,
-            userId: currentUser.uid,
-            timestamp: firebase.database.ServerValue.TIMESTAMP
-        });
+        const reactionRef = database.ref(`chatReactions/${currentTeam.id}/${currentReactionMessageId}/${currentUser.uid}`);
+        
+        // 현재 반응 확인
+        const snapshot = await reactionRef.once('value');
+        const currentReaction = snapshot.val();
+        
+        // 같은 이모지를 다시 누르면 취소
+        if (currentReaction && currentReaction.emoji === emoji) {
+            await reactionRef.remove();
+        } else {
+            // 새로운 반응 또는 다른 이모지로 변경
+            await reactionRef.set({
+                emoji: emoji,
+                userId: currentUser.uid,
+                timestamp: firebase.database.ServerValue.TIMESTAMP
+            });
+        }
         
         closeModal('emojiReactionModal');
         currentReactionMessageId = null;

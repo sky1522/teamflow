@@ -1053,6 +1053,8 @@ body {
     gap: 10px;
     animation: fadeIn 0.3s ease;
     margin-bottom: 12px;
+    position: relative;
+    align-items: flex-start;
 }
 
 @keyframes fadeIn {
@@ -1276,10 +1278,17 @@ body {
 
 /* 이모지 반응 표시 */
 .message-reactions {
+    position: absolute;
+    left: 50px;
+    bottom: -25px;
     display: flex;
     gap: 4px;
-    margin-top: 4px;
     flex-wrap: wrap;
+}
+
+.chat-message.own .message-reactions {
+    left: auto;
+    right: 0;
 }
 
 .reaction-badge {
@@ -1293,15 +1302,13 @@ body {
     font-size: 0.85rem;
     cursor: pointer;
     transition: all 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .reaction-badge:hover {
     background: var(--bg-gray);
     transform: scale(1.05);
-}
-
-.chat-message.own .message-reactions {
-    justify-content: flex-end;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
 }
 
 /* 메시지 강조 효과 */
