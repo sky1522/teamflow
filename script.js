@@ -213,6 +213,16 @@ function initEventListeners() {
     document.querySelectorAll('.emoji-btn').forEach(btn => {
         btn.addEventListener('click', handleEmojiSelect);
     });
+    
+    // 이모지 모달 외부 클릭 시 닫기
+    document.getElementById('emojiReactionModal')?.addEventListener('click', (e) => {
+        if (e.target.id === 'emojiReactionModal') {
+            const modal = document.getElementById('emojiReactionModal');
+            modal.classList.remove('active');
+            modal.style.display = 'none';
+            currentReactionMessageId = null;
+        }
+    });
 }
 
 // ========== 인증 함수 ==========
@@ -1334,7 +1344,26 @@ function handleChatAction(event) {
     if (target.classList.contains('btn-emoji-react')) {
         const messageId = target.dataset.messageId;
         currentReactionMessageId = messageId;
-        openModal('emojiReactionModal');
+        
+        // 클릭한 버튼의 위치 계산
+        const btnRect = target.getBoundingClientRect();
+        const modal = document.getElementById('emojiReactionModal');
+        const modalContent = modal.querySelector('.modal-content');
+        
+        // 버튼 아래쪽에 팝업 표시
+        modal.style.display = 'flex';
+        const left = btnRect.left - 90; // 팝업 너비의 절반 정도
+        const top = btnRect.bottom + 5;
+        
+        // 화면 밖으로 나가지 않도록 조정
+        const maxLeft = window.innerWidth - 190; // 팝업 너비 + 여유
+        const maxTop = window.innerHeight - 100; // 팝업 높이 + 여유
+        
+        modalContent.style.position = 'fixed';
+        modalContent.style.left = Math.max(10, Math.min(left, maxLeft)) + 'px';
+        modalContent.style.top = Math.min(top, maxTop) + 'px';
+        
+        modal.classList.add('active');
     } else if (target.classList.contains('btn-reply')) {
         const messageId = target.dataset.messageId;
         handleReply(messageId);
@@ -1396,7 +1425,10 @@ async function handleEmojiSelect(event) {
             });
         }
         
-        closeModal('emojiReactionModal');
+        // 모달 닫기
+        const modal = document.getElementById('emojiReactionModal');
+        modal.classList.remove('active');
+        modal.style.display = 'none';
         currentReactionMessageId = null;
         
         // 채팅 새로고침
