@@ -1182,6 +1182,11 @@ body {
     display: flex;
 }
 
+/* 이모지 반응 배지에 마우스 오버 시에는 액션 버튼 숨기기 */
+.message-reactions:hover ~ .chat-message-actions {
+    display: none !important;
+}
+
 .chat-message-content {
     position: relative;
     display: flex;
