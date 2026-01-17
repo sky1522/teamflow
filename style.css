@@ -1479,7 +1479,7 @@ body {
     position: fixed;
     top: auto;
     left: auto;
-    right: 20px;
+    right: 30px;
     bottom: 80px;
     width: auto;
     height: auto;
@@ -1490,13 +1490,13 @@ body {
 }
 
 #emojiReactionModal .modal-content {
-    max-width: 240px;
-    width: 240px;
+    max-width: 200px;
+    width: 200px;
     margin: 0;
-    padding: 10px;
+    padding: 8px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
     animation: slideUp 0.2s ease;
-    border-radius: 12px;
+    border-radius: 10px;
 }
 
 @keyframes slideUp {
@@ -1518,14 +1518,14 @@ body {
 .emoji-grid {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
-    gap: 4px;
+    gap: 3px;
 }
 
 .emoji-btn {
-    font-size: 1.5rem;
-    padding: 8px;
+    font-size: 1.3rem;
+    padding: 6px;
     border: none;
-    border-radius: 8px;
+    border-radius: 6px;
     background: white;
     cursor: pointer;
     transition: all 0.2s ease;
