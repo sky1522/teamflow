@@ -335,11 +335,12 @@ async function loadTeamMembers() {
         const memberIds = membersSnapshot.val() || {};
         const presenceData = presenceSnapshot.val() || {};
         
-        const membersList = document.getElementById('membersList');
-        membersList.innerHTML = '';
-        
+        // 임시 Fragment에 먼저 모든 요소를 만듦 (화면에 보이지 않음)
+        const fragment = document.createDocumentFragment();
         let count = 0;
-        for (const userId in memberIds) {
+        
+        // 모든 팀원 데이터를 한번에 가져오기
+        const memberPromises = Object.keys(memberIds).map(async (userId) => {
             const [userSnapshot, nicknameSnapshot] = await Promise.all([
                 database.ref('users/' + userId).once('value'),
                 database.ref(`teamNicknames/${currentTeam.id}/${userId}`).once('value')
@@ -351,7 +352,6 @@ async function loadTeamMembers() {
             const presence = presenceData[userId]?.state || 'offline';
             
             if (user) {
-                count++;
                 const memberDiv = document.createElement('div');
                 memberDiv.className = 'member-item';
                 
@@ -371,10 +371,24 @@ async function loadTeamMembers() {
                         </div>
                     </div>
                 `;
-                membersList.appendChild(memberDiv);
+                return memberDiv;
             }
-        }
+            return null;
+        });
         
+        // 모든 데이터를 기다린 후 한번에 처리
+        const memberDivs = await Promise.all(memberPromises);
+        memberDivs.forEach(div => {
+            if (div) {
+                count++;
+                fragment.appendChild(div);
+            }
+        });
+        
+        // 모든 준비가 끝난 후 한번에 DOM 업데이트
+        const membersList = document.getElementById('membersList');
+        membersList.innerHTML = '';
+        membersList.appendChild(fragment);
         document.getElementById('memberCount').textContent = count;
     } catch (error) {
         console.error('팀원 로딩 실패:', error);
