@@ -437,6 +437,7 @@ body {
     align-items: center;
     gap: 8px;
     margin-bottom: 15px;
+    position: relative;
 }
 
 .team-header-row h3 {
@@ -444,6 +445,8 @@ body {
     flex: 1;
     color: var(--primary-color);
     font-size: 1.3rem;
+    cursor: pointer;
+    padding-right: 35px; /* 연필 버튼 공간 확보 */
 }
 
 .btn-icon-small {
@@ -459,6 +462,15 @@ body {
     justify-content: center;
     transition: all 0.2s ease;
     padding: 0;
+    opacity: 0;
+    pointer-events: none;
+    position: absolute;
+    right: 0;
+}
+
+.team-header-row:hover .btn-icon-small {
+    opacity: 1;
+    pointer-events: auto;
 }
 
 .btn-icon-small:hover {
