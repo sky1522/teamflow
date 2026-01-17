@@ -135,6 +135,11 @@ function initEventListeners() {
     // 닉네임 변경 모달
     document.getElementById('saveNickname').addEventListener('click', handleSaveNickname);
     document.getElementById('cancelNickname').addEventListener('click', () => closeModal('editNicknameModal'));
+    
+    // 팀 이름 수정 모달
+    document.getElementById('editTeamNameBtn')?.addEventListener('click', openTeamNameModal);
+    document.getElementById('saveTeamName').addEventListener('click', updateTeamName);
+    document.getElementById('cancelTeamName').addEventListener('click', () => closeModal('editTeamNameModal'));
 }
 
 // ========== 인증 함수 ==========
@@ -315,6 +320,14 @@ async function handleTeamChange(e) {
 function displayTeamInfo() {
     document.getElementById('currentTeamName').textContent = currentTeam.name;
     // loadTeamMembers()는 실시간 리스너에서 자동으로 호출됨 (중복 방지)
+    
+    // 팀 이름 수정 버튼 표시 (관리자만)
+    const editTeamNameBtn = document.getElementById('editTeamNameBtn');
+    if (currentTeam.createdBy === currentUser.uid) {
+        editTeamNameBtn.style.display = 'flex';
+    } else {
+        editTeamNameBtn.style.display = 'none';
+    }
     
     // 팀 삭제 버튼 표시 (관리자만)
     const deleteBtn = document.getElementById('deleteTeamBtn');
@@ -621,6 +634,61 @@ async function handleSaveNickname() {
         
         alert('닉네임이 변경되었습니다!');
         closeModal('editNicknameModal');
+    } catch (error) {
+        console.error('닉네임 저장 실패:', error);
+        alert('닉네임 저장에 실패했습니다.');
+    }
+}
+
+// ========== 팀 이름 수정 ==========
+function openTeamNameModal() {
+    if (!currentTeam || currentTeam.createdBy !== currentUser.uid) {
+        alert('관리자만 팀 이름을 수정할 수 있습니다.');
+        return;
+    }
+    
+    document.getElementById('teamNameInput').value = currentTeam.name;
+    openModal('editTeamNameModal');
+}
+
+async function updateTeamName() {
+    const newName = document.getElementById('teamNameInput').value.trim();
+    
+    if (!newName || newName.length === 0) {
+        alert('팀 이름을 입력하세요.');
+        return;
+    }
+    
+    if (newName.length > 30) {
+        alert('팀 이름은 30자 이내로 입력하세요.');
+        return;
+    }
+    
+    if (currentTeam.createdBy !== currentUser.uid) {
+        alert('관리자만 팀 이름을 수정할 수 있습니다.');
+        return;
+    }
+    
+    try {
+        await database.ref(`teams/${currentTeam.id}`).update({
+            name: newName,
+            updatedAt: firebase.database.ServerValue.TIMESTAMP
+        });
+        
+        // 로컬 currentTeam 업데이트
+        currentTeam.name = newName;
+        
+        // UI 업데이트
+        displayTeamInfo();
+        loadUserTeams(); // 팀 선택 드롭다운 업데이트
+        
+        alert('팀 이름이 수정되었습니다!');
+        closeModal('editTeamNameModal');
+    } catch (error) {
+        console.error('팀 이름 수정 실패:', error);
+        alert('팀 이름 수정에 실패했습니다.');
+    }
+}
         
         // 팀원 목록 새로고침
         loadTeamMembers();

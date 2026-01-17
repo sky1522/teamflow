@@ -96,7 +96,12 @@
                 <div class="left-sidebar">
                     <!-- 팀 정보 -->
                     <div class="team-info-card">
-                        <h3 id="currentTeamName">팀 이름</h3>
+                        <div class="team-header-row">
+                            <h3 id="currentTeamName">팀 이름</h3>
+                            <button id="editTeamNameBtn" class="btn-icon-small" title="팀 이름 수정" style="display: none;">
+                                ✏️
+                            </button>
+                        </div>
                         <div class="team-members">
                             <div class="members-header">
                                 <span>팀원 (<span id="memberCount">0</span>)</span>
@@ -288,6 +293,25 @@
             <div class="modal-footer">
                 <button id="cancelNickname" class="btn-secondary">취소</button>
                 <button id="saveNickname" class="btn-primary">저장</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 팀 이름 수정 모달 -->
+    <div id="editTeamNameModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>팀 이름 수정</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <label class="modal-label">팀 이름</label>
+                <input type="text" id="teamNameInput" placeholder="팀 이름 입력 (최대 30자)" maxlength="30" class="modal-input">
+                <p class="modal-hint">관리자만 팀 이름을 수정할 수 있습니다.</p>
+            </div>
+            <div class="modal-footer">
+                <button id="cancelTeamName" class="btn-secondary">취소</button>
+                <button id="saveTeamName" class="btn-primary">저장</button>
             </div>
         </div>
     </div>
