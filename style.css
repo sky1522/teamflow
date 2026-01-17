@@ -1162,8 +1162,16 @@ body {
 .chat-message-actions {
     display: none;
     gap: 4px;
-    margin-top: 4px;
-    justify-content: flex-end;
+    position: absolute;
+    left: -70px;
+    top: 50%;
+    transform: translateY(-50%);
+    flex-direction: row;
+}
+
+.chat-message.own .chat-message-actions {
+    left: auto;
+    right: -70px;
 }
 
 .chat-message:hover .chat-message-actions,
@@ -1171,25 +1179,31 @@ body {
     display: flex;
 }
 
+.chat-message-content {
+    position: relative;
+}
+
 .btn-emoji-react,
 .btn-reply {
     background: white;
     border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 4px 8px;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
     font-size: 0.85rem;
     cursor: pointer;
     transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .btn-emoji-react:hover,
 .btn-reply:hover {
     background: var(--bg-gray);
-    transform: scale(1.1);
-}
-
-.chat-message.own .chat-message-actions {
-    justify-content: flex-end;
+    transform: scale(1.15);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
 /* 답장 미리보기 (메시지 내부) */
