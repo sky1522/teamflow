@@ -190,8 +190,12 @@ async function handleSignup() {
 }
 
 async function handleGoogleLogin() {
+    console.log('Google 로그인 시작...');
     try {
+        console.log('googleProvider:', googleProvider);
+        console.log('auth:', auth);
         const result = await auth.signInWithPopup(googleProvider);
+        console.log('로그인 성공:', result.user);
         
         // 신규 사용자인 경우 정보 저장
         const userRef = database.ref('users/' + result.user.uid);
@@ -205,6 +209,7 @@ async function handleGoogleLogin() {
             });
         }
     } catch (error) {
+        console.error('Google 로그인 에러:', error);
         alert('Google 로그인 실패: ' + error.message);
     }
 }
