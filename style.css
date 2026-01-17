@@ -1158,6 +1158,40 @@ body {
     white-space: nowrap;
 }
 
+/* 메시지 액션 버튼 */
+.chat-message-actions {
+    display: none;
+    gap: 4px;
+    margin-top: 4px;
+    justify-content: flex-end;
+}
+
+.chat-message:hover .chat-message-actions,
+.chat-message.own:hover .chat-message-actions {
+    display: flex;
+}
+
+.btn-emoji-react,
+.btn-reply {
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 4px 8px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-emoji-react:hover,
+.btn-reply:hover {
+    background: var(--bg-gray);
+    transform: scale(1.1);
+}
+
+.chat-message.own .chat-message-actions {
+    justify-content: flex-end;
+}
+
 .chat-input-section {
     display: flex;
     gap: 10px;
@@ -1235,6 +1269,33 @@ body {
 
 .modal-large {
     max-width: 700px;
+}
+
+.modal-small {
+    max-width: 350px;
+}
+
+/* 이모지 그리드 */
+.emoji-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+}
+
+.emoji-btn {
+    font-size: 2rem;
+    padding: 15px;
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.emoji-btn:hover {
+    transform: scale(1.2);
+    border-color: var(--primary-color);
+    background: var(--bg-gray);
 }
 
 .modal-header {

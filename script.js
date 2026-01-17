@@ -202,6 +202,14 @@ function initEventListeners() {
     
     // 프로필 사진 업로드
     document.getElementById('profilePhotoInput').addEventListener('change', handleProfilePhotoUpload);
+    
+    // 이모지 반응 및 답장 (이벤트 위임)
+    document.getElementById('chatMessages')?.addEventListener('click', handleChatAction);
+    
+    // 이모지 선택
+    document.querySelectorAll('.emoji-btn').forEach(btn => {
+        btn.addEventListener('click', handleEmojiSelect);
+    });
 }
 
 // ========== 인증 함수 ==========
@@ -1314,6 +1322,66 @@ async function handleAddComment() {
 }
 
 // ========== 채팅 ==========
+let currentReactionMessageId = null;
+
+// 채팅 액션 핸들러 (이벤트 위임)
+function handleChatAction(event) {
+    const target = event.target;
+    
+    if (target.classList.contains('btn-emoji-react')) {
+        const messageId = target.dataset.messageId;
+        currentReactionMessageId = messageId;
+        openModal('emojiReactionModal');
+    } else if (target.classList.contains('btn-reply')) {
+        const messageId = target.dataset.messageId;
+        handleReply(messageId);
+    } else if (target.classList.contains('chat-message-bubble')) {
+        const messageId = target.dataset.messageId;
+        // 메시지 클릭 시 반응 표시 (향후 구현)
+    }
+}
+
+// 이모지 선택
+async function handleEmojiSelect(event) {
+    const emoji = event.target.dataset.emoji;
+    if (!emoji || !currentReactionMessageId) return;
+    
+    try {
+        // Firebase에 반응 저장
+        await database.ref(`chatReactions/${currentTeam.id}/${currentReactionMessageId}/${currentUser.uid}`).set({
+            emoji: emoji,
+            userId: currentUser.uid,
+            timestamp: firebase.database.ServerValue.TIMESTAMP
+        });
+        
+        closeModal('emojiReactionModal');
+        currentReactionMessageId = null;
+        
+        // 채팅 새로고침
+        loadChatMessages();
+    } catch (error) {
+        console.error('반응 저장 실패:', error);
+        alert('반응을 추가하는데 실패했습니다.');
+    }
+}
+
+// 답장 기능
+function handleReply(messageId) {
+    // 답장할 메시지 정보 저장
+    const messageBubble = document.querySelector(`[data-message-id="${messageId}"]`);
+    if (!messageBubble) return;
+    
+    const messageText = messageBubble.textContent;
+    
+    // 입력창에 답장 표시
+    const chatInput = document.getElementById('chatInput');
+    chatInput.value = `@답장: "${messageText.substring(0, 30)}${messageText.length > 30 ? '...' : ''}" `;
+    chatInput.focus();
+    
+    // 답장 원본 메시지 ID 저장
+    chatInput.dataset.replyTo = messageId;
+}
+
 async function loadChatMessages() {
     if (!currentTeam) return;
     
@@ -1391,36 +1459,21 @@ async function displayChatMessages(messages, users = null, nicknames = null) {
             (msg.timestamp - prevMsg.timestamp) < 60000; // 1분 이내
         
         if (isOwn) {
-            // 내 메시지 (오른쪽, 노란색)
-            // 내 프로필 정보 가져오기
-            const myUser = users[currentUser.uid] || {};
-            const myProfilePhoto = myUser.profilePhotoURL || null;
-            const myName = myUser.name || currentUser.displayName || '나';
-            
-            // 내 닉네임 가져오기
-            const myNicknameData = nicknames?.[currentUser.uid];
-            const myNickname = myNicknameData?.nickname || null;
-            const myDisplayName = myNickname ? `${myName}(${myNickname})` : myName;
-            
-            const myAvatarContent = myProfilePhoto 
-                ? `<img src="${myProfilePhoto}" alt="${myName}">` 
-                : myName.charAt(0).toUpperCase();
-            const myAvatarClass = myProfilePhoto ? 'chat-avatar has-photo' : 'chat-avatar';
-            
+            // 내 메시지 (오른쪽, 노란색) - 프로필/이름 제거
             return `
                 <div class="chat-message own">
                     <div class="chat-message-content">
-                        ${!isContinuous ? `
-                            <div class="chat-message-header" style="justify-content: flex-end;">
-                                <span class="chat-message-author">${escapeHtml(myDisplayName)}</span>
-                            </div>
-                        ` : ''}
                         <div class="chat-message-footer">
                             <span class="chat-message-bubble-time">${time}</span>
-                            <div class="chat-message-bubble">${escapeHtml(msg.text)}</div>
+                            <div class="chat-message-bubble" data-message-id="${msg.id}">
+                                ${escapeHtml(msg.text)}
+                            </div>
+                        </div>
+                        <div class="chat-message-actions">
+                            <button class="btn-emoji-react" data-message-id="${msg.id}" title="반응">😊</button>
+                            <button class="btn-reply" data-message-id="${msg.id}" title="답장">↩️</button>
                         </div>
                     </div>
-                    ${!isContinuous ? `<div class="${myAvatarClass}">${myAvatarContent}</div>` : '<div style="width: 40px;"></div>'}
                 </div>
             `;
         } else {
@@ -1435,8 +1488,14 @@ async function displayChatMessages(messages, users = null, nicknames = null) {
                             </div>
                         ` : ''}
                         <div class="chat-message-footer">
-                            <div class="chat-message-bubble">${escapeHtml(msg.text)}</div>
+                            <div class="chat-message-bubble" data-message-id="${msg.id}">
+                                ${escapeHtml(msg.text)}
+                            </div>
                             <span class="chat-message-bubble-time">${time}</span>
+                        </div>
+                        <div class="chat-message-actions">
+                            <button class="btn-emoji-react" data-message-id="${msg.id}" title="반응">😊</button>
+                            <button class="btn-reply" data-message-id="${msg.id}" title="답장">↩️</button>
                         </div>
                     </div>
                 </div>
@@ -1449,7 +1508,8 @@ async function displayChatMessages(messages, users = null, nicknames = null) {
 }
 
 async function handleSendMessage() {
-    const text = document.getElementById('chatInput').value.trim();
+    const chatInput = document.getElementById('chatInput');
+    const text = chatInput.value.trim();
     
     if (!text) return;
     
@@ -1465,15 +1525,23 @@ async function handleSendMessage() {
         
         const messageRef = database.ref('chat/' + currentTeam.id).push();
         
-        await messageRef.set({
+        const messageData = {
             id: messageRef.key,
             text: text,
             userId: currentUser.uid,
-            userName: nickname,  // 닉네임 사용
+            userName: nickname,
             timestamp: firebase.database.ServerValue.TIMESTAMP
-        });
+        };
         
-        document.getElementById('chatInput').value = '';
+        // 답장인 경우 원본 메시지 ID 추가
+        if (chatInput.dataset.replyTo) {
+            messageData.replyTo = chatInput.dataset.replyTo;
+            delete chatInput.dataset.replyTo;
+        }
+        
+        await messageRef.set(messageData);
+        
+        chatInput.value = '';
         
     } catch (error) {
         console.error('메시지 전송 실패:', error);
