@@ -1344,6 +1344,34 @@ function handleChatAction(event) {
     }
 }
 
+// 이모지 반응 클릭 (취소 또는 추가)
+async function handleReactionClick(messageId, emoji) {
+    if (!currentTeam || !currentUser) return;
+    
+    try {
+        const reactionRef = database.ref(`chatReactions/${currentTeam.id}/${messageId}/${currentUser.uid}`);
+        const snapshot = await reactionRef.once('value');
+        const currentReaction = snapshot.val();
+        
+        // 같은 이모지면 취소
+        if (currentReaction && currentReaction.emoji === emoji) {
+            await reactionRef.remove();
+        } else {
+            // 다른 이모지로 변경
+            await reactionRef.set({
+                emoji: emoji,
+                userId: currentUser.uid,
+                timestamp: firebase.database.ServerValue.TIMESTAMP
+            });
+        }
+        
+        // 채팅 새로고침
+        loadChatMessages();
+    } catch (error) {
+        console.error('반응 토글 실패:', error);
+    }
+}
+
 // 이모지 선택
 async function handleEmojiSelect(event) {
     const emoji = event.target.dataset.emoji;
@@ -1560,9 +1588,15 @@ async function displayChatMessages(messages, users = null, nicknames = null, rea
         // 이모지 반응
         const msgReactions = reactions?.[msg.id] || {};
         const reactionCounts = {};
-        Object.values(msgReactions).forEach(reaction => {
+        const reactionUsers = {};
+        
+        Object.entries(msgReactions).forEach(([userId, reaction]) => {
             if (reaction.emoji) {
                 reactionCounts[reaction.emoji] = (reactionCounts[reaction.emoji] || 0) + 1;
+                if (!reactionUsers[reaction.emoji]) {
+                    reactionUsers[reaction.emoji] = [];
+                }
+                reactionUsers[reaction.emoji].push(userId);
             }
         });
         
@@ -1570,9 +1604,11 @@ async function displayChatMessages(messages, users = null, nicknames = null, rea
         if (Object.keys(reactionCounts).length > 0) {
             reactionsHTML = `
                 <div class="message-reactions">
-                    ${Object.entries(reactionCounts).map(([emoji, count]) => 
-                        `<span class="reaction-badge">${emoji} ${count}</span>`
-                    ).join('')}
+                    ${Object.entries(reactionCounts).map(([emoji, count]) => {
+                        const userReacted = reactionUsers[emoji].includes(currentUser.uid);
+                        const reactionClass = userReacted ? 'reaction-badge my-reaction' : 'reaction-badge';
+                        return `<span class="${reactionClass}" data-message-id="${msg.id}" data-emoji="${emoji}" onclick="handleReactionClick('${msg.id}', '${emoji}')">${emoji} ${count}</span>`;
+                    }).join('')}
                 </div>
             `;
         }

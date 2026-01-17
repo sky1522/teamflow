@@ -1311,6 +1311,17 @@ body {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
 }
 
+.reaction-badge.my-reaction {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.reaction-badge.my-reaction:hover {
+    background: #5a7fbf;
+    border-color: #5a7fbf;
+}
+
 /* 메시지 강조 효과 */
 .highlight-message {
     animation: highlightPulse 1s ease;
