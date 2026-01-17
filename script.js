@@ -1379,6 +1379,15 @@ async function displayChatMessages(messages, users = null) {
         
         if (isOwn) {
             // 내 메시지 (오른쪽, 노란색)
+            // 내 프로필 정보 가져오기
+            const myUser = users[currentUser.uid] || {};
+            const myProfilePhoto = myUser.profilePhotoURL || null;
+            const myName = currentUser.displayName || myUser.name || '나';
+            const myAvatarContent = myProfilePhoto 
+                ? `<img src="${myProfilePhoto}" alt="${myName}">` 
+                : myName.charAt(0).toUpperCase();
+            const myAvatarClass = myProfilePhoto ? 'chat-avatar has-photo' : 'chat-avatar';
+            
             return `
                 <div class="chat-message own">
                     <div class="chat-message-content">
@@ -1387,6 +1396,7 @@ async function displayChatMessages(messages, users = null) {
                             <div class="chat-message-bubble">${escapeHtml(msg.text)}</div>
                         </div>
                     </div>
+                    ${!isContinuous ? `<div class="${myAvatarClass}">${myAvatarContent}</div>` : '<div style="width: 40px;"></div>'}
                 </div>
             `;
         } else {

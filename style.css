@@ -1095,10 +1095,6 @@ body {
     background: none;
 }
 
-.chat-message.own .chat-avatar {
-    display: none;
-}
-
 /* 메시지 컨텐츠 */
 .chat-message-content {
     display: flex;
