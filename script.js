@@ -199,6 +199,9 @@ function initEventListeners() {
     document.getElementById('editTeamNameBtn')?.addEventListener('click', openTeamNameModal);
     document.getElementById('saveTeamName').addEventListener('click', updateTeamName);
     document.getElementById('cancelTeamName').addEventListener('click', () => closeModal('editTeamNameModal'));
+    
+    // 프로필 사진 업로드
+    document.getElementById('profilePhotoInput').addEventListener('change', handleProfilePhotoUpload);
 }
 
 // ========== 인증 함수 ==========
@@ -427,6 +430,7 @@ async function loadTeamMembers() {
             const nicknameData = nicknameSnapshot.val();
             const nickname = nicknameData?.nickname || '닉네임 없음';
             const presence = presenceData[userId]?.state || 'offline';
+            const profilePhoto = user.profilePhotoURL || null;
             
             if (user) {
                 const memberDiv = document.createElement('div');
@@ -435,9 +439,15 @@ async function loadTeamMembers() {
                 const statusClass = `status-${presence}`;
                 const isCurrentUser = userId === currentUser.uid;
                 
+                // 프로필 사진 또는 이니셜
+                const avatarContent = profilePhoto 
+                    ? `<img src="${profilePhoto}" alt="${user.name}">` 
+                    : user.name.charAt(0).toUpperCase();
+                const avatarClass = profilePhoto ? 'member-avatar has-photo' : 'member-avatar';
+                
                 memberDiv.innerHTML = `
-                    <div class="member-avatar-wrapper">
-                        <div class="member-avatar">${user.name.charAt(0).toUpperCase()}</div>
+                    <div class="member-avatar-wrapper" ${isCurrentUser ? 'onclick="openProfilePhotoUpload()"' : ''} ${isCurrentUser ? 'style="cursor: pointer;"' : ''}>
+                        <div class="${avatarClass}">${avatarContent}</div>
                         <span class="member-status-badge ${statusClass}"></span>
                     </div>
                     <div class="member-info">
@@ -710,6 +720,56 @@ async function handleSaveNickname() {
     } catch (error) {
         console.error('닉네임 저장 실패:', error);
         alert('닉네임 저장에 실패했습니다.');
+    }
+}
+
+// ========== 프로필 사진 업로드 ==========
+function openProfilePhotoUpload() {
+    document.getElementById('profilePhotoInput').click();
+}
+
+// 파일 입력 이벤트는 initEventListeners에서 등록
+
+async function handleProfilePhotoUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    // 이미지 파일만 허용
+    if (!file.type.startsWith('image/')) {
+        alert('이미지 파일만 업로드 가능합니다.');
+        return;
+    }
+    
+    // 파일 크기 제한 (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+        alert('파일 크기는 5MB 이하로 제한됩니다.');
+        return;
+    }
+    
+    try {
+        // 로딩 표시
+        const loadingMsg = alert('프로필 사진을 업로드 중입니다...');
+        
+        // Firebase Storage에 업로드
+        const storageRef = storage.ref(`profilePhotos/${currentUser.uid}/${Date.now()}_${file.name}`);
+        const uploadTask = await storageRef.put(file);
+        const downloadURL = await uploadTask.ref.getDownloadURL();
+        
+        // 사용자 정보에 프로필 사진 URL 저장
+        await database.ref(`users/${currentUser.uid}`).update({
+            profilePhotoURL: downloadURL,
+            updatedAt: firebase.database.ServerValue.TIMESTAMP
+        });
+        
+        alert('프로필 사진이 변경되었습니다! 🎉');
+        
+        // 팀원 목록 새로고침 (자동으로 실시간 리스너가 업데이트)
+    } catch (error) {
+        console.error('프로필 사진 업로드 실패:', error);
+        alert('프로필 사진 업로드에 실패했습니다: ' + error.message);
+    } finally {
+        // 파일 입력 초기화
+        event.target.value = '';
     }
 }
 
@@ -1258,24 +1318,29 @@ async function loadChatMessages() {
     if (!currentTeam) return;
     
     try {
-        const snapshot = await database.ref('chat/' + currentTeam.id)
-            .orderByChild('timestamp')
-            .limitToLast(50)
-            .once('value');
+        const [messagesSnapshot, usersSnapshot] = await Promise.all([
+            database.ref('chat/' + currentTeam.id)
+                .orderByChild('timestamp')
+                .limitToLast(50)
+                .once('value'),
+            database.ref('users').once('value')
+        ]);
         
         const messages = [];
-        snapshot.forEach(child => {
+        messagesSnapshot.forEach(child => {
             messages.push(child.val());
         });
         
-        displayChatMessages(messages);
+        const users = usersSnapshot.val() || {};
+        
+        displayChatMessages(messages, users);
         
     } catch (error) {
         console.error('채팅 메시지 로딩 실패:', error);
     }
 }
 
-function displayChatMessages(messages) {
+async function displayChatMessages(messages, users = null) {
     const chatMessages = document.getElementById('chatMessages');
     
     if (messages.length === 0) {
@@ -1283,22 +1348,66 @@ function displayChatMessages(messages) {
         return;
     }
     
-    chatMessages.innerHTML = messages.map(msg => {
+    // users가 없으면 가져오기
+    if (!users) {
+        const usersSnapshot = await database.ref('users').once('value');
+        users = usersSnapshot.val() || {};
+    }
+    
+    chatMessages.innerHTML = messages.map((msg, index) => {
         const isOwn = msg.userId === currentUser.uid;
         const time = new Date(msg.timestamp).toLocaleTimeString('ko-KR', {
             hour: '2-digit',
             minute: '2-digit'
         });
         
-        return `
-            <div class="chat-message ${isOwn ? 'own' : ''}">
-                <div class="chat-message-header">
-                    <span class="chat-message-author">${escapeHtml(msg.userName)}</span>
-                    <span>${time}</span>
+        const user = users[msg.userId] || {};
+        const profilePhoto = user.profilePhotoURL || null;
+        const userName = msg.userName || user.name || '사용자';
+        
+        // 프로필 사진 또는 이니셜
+        const avatarContent = profilePhoto 
+            ? `<img src="${profilePhoto}" alt="${userName}">` 
+            : userName.charAt(0).toUpperCase();
+        const avatarClass = profilePhoto ? 'chat-avatar has-photo' : 'chat-avatar';
+        
+        // 연속 메시지 체크 (같은 사용자가 1분 이내 연속으로 보낸 메시지)
+        const prevMsg = index > 0 ? messages[index - 1] : null;
+        const isContinuous = prevMsg && 
+            prevMsg.userId === msg.userId && 
+            (msg.timestamp - prevMsg.timestamp) < 60000; // 1분 이내
+        
+        if (isOwn) {
+            // 내 메시지 (오른쪽, 노란색)
+            return `
+                <div class="chat-message own">
+                    <div class="chat-message-content">
+                        <div class="chat-message-footer">
+                            <span class="chat-message-bubble-time">${time}</span>
+                            <div class="chat-message-bubble">${escapeHtml(msg.text)}</div>
+                        </div>
+                    </div>
                 </div>
-                <div class="chat-message-bubble">${escapeHtml(msg.text)}</div>
-            </div>
-        `;
+            `;
+        } else {
+            // 상대방 메시지 (왼쪽, 흰색)
+            return `
+                <div class="chat-message">
+                    ${!isContinuous ? `<div class="${avatarClass}">${avatarContent}</div>` : '<div style="width: 40px;"></div>'}
+                    <div class="chat-message-content">
+                        ${!isContinuous ? `
+                            <div class="chat-message-header">
+                                <span class="chat-message-author">${escapeHtml(userName)}</span>
+                            </div>
+                        ` : ''}
+                        <div class="chat-message-footer">
+                            <div class="chat-message-bubble">${escapeHtml(msg.text)}</div>
+                            <span class="chat-message-bubble-time">${time}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
     }).join('');
     
     // 스크롤을 맨 아래로
