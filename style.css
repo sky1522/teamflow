@@ -1167,6 +1167,7 @@ body {
     right: -70px;
     bottom: 0;
     flex-direction: row;
+    z-index: 10;
 }
 
 .chat-message.own .chat-message-actions {
@@ -1181,6 +1182,8 @@ body {
 
 .chat-message-content {
     position: relative;
+    display: flex;
+    flex-direction: column;
 }
 
 .btn-emoji-react,
@@ -1455,42 +1458,62 @@ body {
 
 /* 이모지 선택 팝오버 */
 #emojiReactionModal.modal {
+    position: fixed;
+    top: auto;
+    left: auto;
+    right: 20px;
+    bottom: 100px;
+    width: auto;
+    height: auto;
     background: transparent;
     align-items: flex-end;
-    justify-content: center;
-    padding: 20px;
+    justify-content: flex-end;
+    padding: 0;
 }
 
 #emojiReactionModal .modal-content {
-    max-width: 320px;
+    max-width: 280px;
+    width: 280px;
     margin: 0;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    animation: slideUp 0.2s ease;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 #emojiReactionModal .modal-header {
-    padding: 12px 15px;
+    padding: 10px 12px;
 }
 
 #emojiReactionModal .modal-header h3 {
-    font-size: 1rem;
+    font-size: 0.9rem;
 }
 
 #emojiReactionModal .modal-body {
-    padding: 15px;
+    padding: 12px;
 }
 
 /* 이모지 그리드 */
 .emoji-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 8px;
+    gap: 6px;
 }
 
 .emoji-btn {
-    font-size: 1.8rem;
-    padding: 12px;
+    font-size: 1.5rem;
+    padding: 10px;
     border: 1px solid var(--border-color);
-    border-radius: 10px;
+    border-radius: 8px;
     background: white;
     cursor: pointer;
     transition: all 0.2s ease;
