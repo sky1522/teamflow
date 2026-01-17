@@ -1339,7 +1339,7 @@ body {
     gap: 3px;
     padding: 2px 8px;
     background: white;
-    border: 1px solid #ddd;
+    border: none;
     border-radius: 12px;
     font-size: 0.8rem;
     cursor: pointer;
@@ -1355,12 +1355,10 @@ body {
 
 .reaction-badge.my-reaction {
     background: #f0f0f0;
-    border: 1.5px solid #888;
 }
 
 .reaction-badge.my-reaction:hover {
     background: #e8e8e8;
-    border: 1.5px solid #888;
 }
 
 /* 메시지 강조 효과 */

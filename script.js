@@ -1423,11 +1423,15 @@ async function showReactionUsers(event, messageId, emoji, userIdsStr) {
         const nicknamesSnapshot = await database.ref(`teamNicknames/${currentTeam.id}`).once('value');
         const nicknames = nicknamesSnapshot.val() || {};
         
+        // 해당 메시지의 모든 반응 정보 가져오기
+        const reactionsSnapshot = await database.ref(`chatReactions/${currentTeam.id}/${messageId}`).once('value');
+        const reactions = reactionsSnapshot.val() || {};
+        
         const reactionUsersList = document.getElementById('reactionUsersList');
         
         reactionUsersList.innerHTML = `
-            <div style="text-align: center; padding: 8px; border-bottom: 1px solid #eee; background: #f9f9f9; font-weight: 600; font-size: 0.85rem;">
-                전체 ${userIds.length}명
+            <div style="text-align: center; padding: 10px; border-bottom: 1px solid #eee; background: #f9f9f9; font-weight: 600; font-size: 0.9rem; color: #333;">
+                공감한 친구
             </div>
             ${userIds.map(userId => {
                 const user = users[userId] || {};
@@ -1436,14 +1440,21 @@ async function showReactionUsers(event, messageId, emoji, userIdsStr) {
                 const nickname = nicknames?.[userId]?.nickname || null;
                 const displayName = nickname ? `${userName}(${nickname})` : userName;
                 
+                // 해당 사용자의 공감 이모지 찾기
+                const userReaction = reactions[userId];
+                const userEmoji = userReaction ? userReaction.emoji : emoji;
+                
                 const avatarContent = profilePhoto 
                     ? `<div style="width: 32px; height: 32px; border-radius: 50%; overflow: hidden; flex-shrink: 0;"><img src="${profilePhoto}" alt="${userName}" style="width: 100%; height: 100%; object-fit: cover;"></div>` 
                     : `<div style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #6B8DD6, #8E37D7); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.75rem; flex-shrink: 0;">${userName.charAt(0).toUpperCase()}</div>`;
                 
                 return `
-                    <div style="display: flex; align-items: center; padding: 10px 12px; border-bottom: 1px solid #f5f5f5;">
-                        ${avatarContent}
-                        <span style="margin-left: 10px; font-size: 0.85rem; color: #333;">${escapeHtml(displayName)}</span>
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid #f5f5f5;">
+                        <div style="display: flex; align-items: center;">
+                            ${avatarContent}
+                            <span style="margin-left: 10px; font-size: 0.85rem; color: #333;">${escapeHtml(displayName)}</span>
+                        </div>
+                        <span style="font-size: 1.2rem;">${userEmoji}</span>
                     </div>
                 `;
             }).join('')}
