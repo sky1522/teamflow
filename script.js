@@ -1266,8 +1266,21 @@ function stopPresence() {
 let currentListeners = {
     todos: null,
     chat: null,
-    members: null
+    members: null,
+    presence: null,
+    nicknames: null
 };
+
+// 팀원 목록 렌더링 디바운싱
+let memberUpdateTimeout = null;
+function debouncedLoadTeamMembers() {
+    if (memberUpdateTimeout) {
+        clearTimeout(memberUpdateTimeout);
+    }
+    memberUpdateTimeout = setTimeout(() => {
+        loadTeamMembers();
+    }, 100); // 100ms 내 여러 업데이트를 하나로 묶음
+}
 
 function setupRealtimeListeners() {
     if (!currentTeam) return;
@@ -1294,26 +1307,34 @@ function setupRealtimeListeners() {
         }
     });
     
-    // 팀원 변경 감지 (닉네임, 접속 상태 포함)
+    // 팀원 변경 감지
     currentListeners.members = database.ref('teamMembers/' + currentTeam.id);
     currentListeners.members.on('value', () => {
-        loadTeamMembers();
+        debouncedLoadTeamMembers();
     });
     
     // 접속 상태 변경 감지
-    database.ref('presence/' + currentTeam.id).on('value', () => {
-        loadTeamMembers();
+    currentListeners.presence = database.ref('presence/' + currentTeam.id);
+    currentListeners.presence.on('value', () => {
+        debouncedLoadTeamMembers();
     });
     
     // 닉네임 변경 감지
-    database.ref('teamNicknames/' + currentTeam.id).on('value', () => {
-        loadTeamMembers();
+    currentListeners.nicknames = database.ref('teamNicknames/' + currentTeam.id);
+    currentListeners.nicknames.on('value', () => {
+        debouncedLoadTeamMembers();
     });
 }
 
 function removeRealtimeListeners() {
     // 접속 상태 중지
     stopPresence();
+    
+    // 디바운싱 타이머 정리
+    if (memberUpdateTimeout) {
+        clearTimeout(memberUpdateTimeout);
+        memberUpdateTimeout = null;
+    }
     
     if (currentListeners.todos) {
         currentListeners.todos.off();
@@ -1327,11 +1348,13 @@ function removeRealtimeListeners() {
         currentListeners.members.off();
         currentListeners.members = null;
     }
-    
-    // 추가 리스너 제거
-    if (currentTeam) {
-        database.ref('presence/' + currentTeam.id).off();
-        database.ref('teamNicknames/' + currentTeam.id).off();
+    if (currentListeners.presence) {
+        currentListeners.presence.off();
+        currentListeners.presence = null;
+    }
+    if (currentListeners.nicknames) {
+        currentListeners.nicknames.off();
+        currentListeners.nicknames = null;
     }
 }
 
