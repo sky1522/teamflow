@@ -7,6 +7,7 @@ let currentYear = new Date().getFullYear();
 let currentMonth = new Date().getMonth();
 let attachedFiles = [];
 let currentTodoForDetail = null;
+let activityTimeout = null;
 
 // ========== 초기화 ==========
 document.addEventListener('DOMContentLoaded', () => {
@@ -130,6 +131,10 @@ function initEventListeners() {
 
     // 할일 상세 모달
     document.getElementById('addCommentBtn').addEventListener('click', handleAddComment);
+    
+    // 닉네임 변경 모달
+    document.getElementById('saveNickname').addEventListener('click', handleSaveNickname);
+    document.getElementById('cancelNickname').addEventListener('click', () => closeModal('editNicknameModal'));
 }
 
 // ========== 인증 함수 ==========
@@ -322,25 +327,48 @@ function displayTeamInfo() {
 
 async function loadTeamMembers() {
     try {
-        const snapshot = await database.ref('teamMembers/' + currentTeam.id).once('value');
-        const memberIds = snapshot.val() || {};
+        const [membersSnapshot, presenceSnapshot] = await Promise.all([
+            database.ref('teamMembers/' + currentTeam.id).once('value'),
+            database.ref('presence/' + currentTeam.id).once('value')
+        ]);
+        
+        const memberIds = membersSnapshot.val() || {};
+        const presenceData = presenceSnapshot.val() || {};
         
         const membersList = document.getElementById('membersList');
         membersList.innerHTML = '';
         
         let count = 0;
         for (const userId in memberIds) {
-            const userSnapshot = await database.ref('users/' + userId).once('value');
+            const [userSnapshot, nicknameSnapshot] = await Promise.all([
+                database.ref('users/' + userId).once('value'),
+                database.ref(`teamNicknames/${currentTeam.id}/${userId}`).once('value')
+            ]);
+            
             const user = userSnapshot.val();
+            const nicknameData = nicknameSnapshot.val();
+            const nickname = nicknameData?.nickname || '닉네임 없음';
+            const presence = presenceData[userId]?.state || 'offline';
+            
             if (user) {
                 count++;
                 const memberDiv = document.createElement('div');
                 memberDiv.className = 'member-item';
+                
+                const statusClass = `status-${presence}`;
+                const isCurrentUser = userId === currentUser.uid;
+                
                 memberDiv.innerHTML = `
-                    <div class="member-avatar">${user.name.charAt(0).toUpperCase()}</div>
+                    <div class="member-avatar-wrapper">
+                        <div class="member-avatar">${user.name.charAt(0).toUpperCase()}</div>
+                        <span class="member-status-badge ${statusClass}"></span>
+                    </div>
                     <div class="member-info">
-                        <div class="member-name">${user.name}</div>
-                        <div class="member-role">${memberIds[userId].role === 'admin' ? '관리자' : '멤버'}</div>
+                        <div class="member-name-row">
+                            <span class="member-name">${escapeHtml(user.name)}</span>
+                            <span class="member-nickname">(${escapeHtml(nickname)})</span>
+                            ${isCurrentUser ? `<button class="btn-edit-nickname" onclick="openNicknameModal()">변경</button>` : ''}
+                        </div>
                     </div>
                 `;
                 membersList.appendChild(memberDiv);
@@ -545,6 +573,47 @@ function handleCopyTeamCode() {
     }).catch(err => {
         alert('복사 실패: ' + err);
     });
+}
+
+// ========== 닉네임 관리 ==========
+function openNicknameModal() {
+    // 현재 닉네임 불러오기
+    database.ref(`teamNicknames/${currentTeam.id}/${currentUser.uid}`).once('value')
+        .then(snapshot => {
+            const currentNickname = snapshot.val()?.nickname || '';
+            document.getElementById('nicknameInput').value = currentNickname;
+            openModal('editNicknameModal');
+        });
+}
+
+async function handleSaveNickname() {
+    const nickname = document.getElementById('nicknameInput').value.trim();
+    
+    if (!nickname || nickname.length === 0) {
+        alert('닉네임을 입력하세요.');
+        return;
+    }
+    
+    if (nickname.length > 15) {
+        alert('닉네임은 15자 이내로 입력하세요.');
+        return;
+    }
+    
+    try {
+        await database.ref(`teamNicknames/${currentTeam.id}/${currentUser.uid}`).set({
+            nickname: nickname,
+            updatedAt: firebase.database.ServerValue.TIMESTAMP
+        });
+        
+        alert('닉네임이 변경되었습니다!');
+        closeModal('editNicknameModal');
+        
+        // 팀원 목록 새로고침
+        loadTeamMembers();
+    } catch (error) {
+        console.error('닉네임 저장 실패:', error);
+        alert('닉네임 저장에 실패했습니다.');
+    }
 }
 
 // ========== 모달 관리 ==========
@@ -1096,13 +1165,17 @@ async function handleSendMessage() {
     }
     
     try {
+        // 닉네임 가져오기
+        const nicknameSnapshot = await database.ref(`teamNicknames/${currentTeam.id}/${currentUser.uid}`).once('value');
+        const nickname = nicknameSnapshot.val()?.nickname || currentUser.displayName || '사용자';
+        
         const messageRef = database.ref('chat/' + currentTeam.id).push();
         
         await messageRef.set({
             id: messageRef.key,
             text: text,
             userId: currentUser.uid,
-            userName: currentUser.displayName || '사용자',
+            userName: nickname,  // 닉네임 사용
             timestamp: firebase.database.ServerValue.TIMESTAMP
         });
         
@@ -1112,6 +1185,81 @@ async function handleSendMessage() {
         console.error('메시지 전송 실패:', error);
         alert('메시지 전송에 실패했습니다.');
     }
+}
+
+// ========== 접속 상태 관리 ==========
+function setupPresence() {
+    if (!currentTeam || !currentUser) return;
+    
+    const presenceRef = database.ref(`presence/${currentTeam.id}/${currentUser.uid}`);
+    const connectedRef = database.ref('.info/connected');
+    
+    connectedRef.on('value', (snapshot) => {
+        if (snapshot.val()) {
+            // 온라인 상태 설정
+            presenceRef.set({
+                state: 'online',
+                lastActive: firebase.database.ServerValue.TIMESTAMP
+            });
+            
+            // 연결 끊길 때 자동으로 오프라인 처리
+            presenceRef.onDisconnect().update({
+                state: 'offline',
+                lastActive: firebase.database.ServerValue.TIMESTAMP
+            });
+            
+            // 활동 모니터링 시작
+            startActivityMonitor();
+        }
+    });
+}
+
+function startActivityMonitor() {
+    const resetActivity = () => {
+        if (!currentTeam || !currentUser) return;
+        
+        clearTimeout(activityTimeout);
+        
+        // 온라인 상태로 복귀
+        database.ref(`presence/${currentTeam.id}/${currentUser.uid}`).update({
+            state: 'online',
+            lastActive: firebase.database.ServerValue.TIMESTAMP
+        });
+        
+        // 5분 후 "자리비움"으로 변경
+        activityTimeout = setTimeout(() => {
+            if (currentTeam && currentUser) {
+                database.ref(`presence/${currentTeam.id}/${currentUser.uid}`).update({
+                    state: 'away',
+                    lastActive: firebase.database.ServerValue.TIMESTAMP
+                });
+            }
+        }, 5 * 60 * 1000); // 5분
+    };
+    
+    // 이벤트 리스너 제거 (중복 방지)
+    document.removeEventListener('mousemove', resetActivity);
+    document.removeEventListener('keypress', resetActivity);
+    document.removeEventListener('click', resetActivity);
+    
+    // 이벤트 리스너 추가
+    document.addEventListener('mousemove', resetActivity);
+    document.addEventListener('keypress', resetActivity);
+    document.addEventListener('click', resetActivity);
+    
+    // 초기 실행
+    resetActivity();
+}
+
+function stopPresence() {
+    if (currentTeam && currentUser) {
+        database.ref(`presence/${currentTeam.id}/${currentUser.uid}`).update({
+            state: 'offline',
+            lastActive: firebase.database.ServerValue.TIMESTAMP
+        });
+    }
+    
+    clearTimeout(activityTimeout);
 }
 
 // ========== 실시간 리스너 ==========
@@ -1126,6 +1274,9 @@ function setupRealtimeListeners() {
     
     // 기존 리스너 제거
     removeRealtimeListeners();
+    
+    // 접속 상태 설정
+    setupPresence();
     
     // 할일 변경 감지
     currentListeners.todos = database.ref('todos/' + currentTeam.id);
@@ -1143,14 +1294,27 @@ function setupRealtimeListeners() {
         }
     });
     
-    // 팀원 변경 감지
+    // 팀원 변경 감지 (닉네임, 접속 상태 포함)
     currentListeners.members = database.ref('teamMembers/' + currentTeam.id);
     currentListeners.members.on('value', () => {
+        loadTeamMembers();
+    });
+    
+    // 접속 상태 변경 감지
+    database.ref('presence/' + currentTeam.id).on('value', () => {
+        loadTeamMembers();
+    });
+    
+    // 닉네임 변경 감지
+    database.ref('teamNicknames/' + currentTeam.id).on('value', () => {
         loadTeamMembers();
     });
 }
 
 function removeRealtimeListeners() {
+    // 접속 상태 중지
+    stopPresence();
+    
     if (currentListeners.todos) {
         currentListeners.todos.off();
         currentListeners.todos = null;
@@ -1162,6 +1326,12 @@ function removeRealtimeListeners() {
     if (currentListeners.members) {
         currentListeners.members.off();
         currentListeners.members = null;
+    }
+    
+    // 추가 리스너 제거
+    if (currentTeam) {
+        database.ref('presence/' + currentTeam.id).off();
+        database.ref('teamNicknames/' + currentTeam.id).off();
     }
 }
 
