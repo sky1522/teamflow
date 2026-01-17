@@ -22,11 +22,69 @@ function initAuth() {
             currentUser = user;
             showApp();
             loadUserTeams();
+            
+            // URL에 초대 코드가 있는 경우 자동 참여
+            checkInviteLink();
         } else {
             currentUser = null;
             showAuth();
         }
     });
+}
+
+// URL 초대 링크 체크
+async function checkInviteLink() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const inviteCode = urlParams.get('invite');
+    
+    if (inviteCode) {
+        console.log('초대 코드 감지:', inviteCode);
+        
+        // URL 파라미터 제거 (깔끔하게)
+        window.history.replaceState({}, document.title, window.location.pathname);
+        
+        // 자동으로 팀 참여 시도
+        try {
+            const teamsSnapshot = await database.ref('teams').orderByChild('code').equalTo(inviteCode).once('value');
+            const teams = teamsSnapshot.val();
+            
+            if (!teams) {
+                alert('유효하지 않은 초대 링크입니다.');
+                return;
+            }
+            
+            const teamId = Object.keys(teams)[0];
+            const team = teams[teamId];
+            
+            // 이미 팀원인지 확인
+            const memberSnapshot = await database.ref(`teamMembers/${teamId}/${currentUser.uid}`).once('value');
+            
+            if (memberSnapshot.exists()) {
+                alert(`이미 '${team.name}' 팀의 멤버입니다!`);
+                // 해당 팀으로 전환
+                currentTeam = { id: teamId, ...team };
+                await loadTeam(teamId);
+                return;
+            }
+            
+            // 팀에 추가
+            await database.ref(`teamMembers/${teamId}/${currentUser.uid}`).set({
+                joinedAt: firebase.database.ServerValue.TIMESTAMP
+            });
+            
+            await database.ref(`userTeams/${currentUser.uid}/${teamId}`).set(true);
+            
+            alert(`'${team.name}' 팀에 참여했습니다! 🎉`);
+            
+            // 팀 목록 새로고침 및 자동 선택
+            await loadUserTeams();
+            currentTeam = { id: teamId, ...team };
+            await loadTeam(teamId);
+        } catch (error) {
+            console.error('자동 팀 참여 실패:', error);
+            alert('팀 참여에 실패했습니다: ' + error.message);
+        }
+    }
 }
 
 // ========== 이벤트 리스너 설정 ==========
@@ -77,6 +135,7 @@ function initEventListeners() {
 
     // 팀원 초대 모달
     document.getElementById('copyTeamCode').addEventListener('click', handleCopyTeamCode);
+    document.getElementById('copyTeamLink').addEventListener('click', handleCopyTeamLink);
     document.getElementById('closeInviteModal').addEventListener('click', () => closeModal('inviteMemberModal'));
 
     // 모달 닫기
@@ -607,6 +666,15 @@ function handleCopyTeamCode() {
     });
 }
 
+function handleCopyTeamLink() {
+    const link = document.getElementById('displayTeamLink').textContent;
+    navigator.clipboard.writeText(link).then(() => {
+        alert('초대 링크가 복사되었습니다! 📋');
+    }).catch(err => {
+        alert('복사 실패: ' + err);
+    });
+}
+
 // ========== 닉네임 관리 ==========
 function openNicknameModal() {
     // 현재 닉네임 불러오기
@@ -700,9 +768,13 @@ function openModal(modalId) {
     const modal = document.getElementById(modalId);
     modal.classList.add('active');
     
-    // 팀원 초대 모달인 경우 팀 코드 표시
+    // 팀원 초대 모달인 경우 팀 코드와 링크 표시
     if (modalId === 'inviteMemberModal' && currentTeam) {
         document.getElementById('displayTeamCode').textContent = currentTeam.code;
+        
+        // 초대 링크 생성
+        const inviteLink = `${window.location.origin}${window.location.pathname}?invite=${currentTeam.code}`;
+        document.getElementById('displayTeamLink').textContent = inviteLink;
     }
 }
 

@@ -241,12 +241,21 @@
                 <button class="modal-close">&times;</button>
             </div>
             <div class="modal-body">
-                <label class="modal-label">팀 코드를 공유하세요:</label>
+                <label class="modal-label">팀 코드로 초대:</label>
                 <div class="code-display">
                     <code id="displayTeamCode">XXXXXX</code>
                     <button id="copyTeamCode" class="btn-icon" title="복사">📋</button>
                 </div>
                 <p class="modal-hint">이 코드를 팀원에게 공유하면 팀에 참여할 수 있습니다</p>
+                
+                <hr style="margin: 20px 0; border: none; border-top: 1px solid var(--border-color);">
+                
+                <label class="modal-label">초대 링크로 공유:</label>
+                <div class="code-display">
+                    <code id="displayTeamLink" style="font-size: 0.85rem; word-break: break-all;">https://...</code>
+                    <button id="copyTeamLink" class="btn-icon" title="복사">📋</button>
+                </div>
+                <p class="modal-hint">링크를 클릭하면 자동으로 팀에 참여됩니다</p>
             </div>
             <div class="modal-footer">
                 <button id="closeInviteModal" class="btn-primary">닫기</button>
