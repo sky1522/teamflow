@@ -1571,10 +1571,10 @@ async function displayChatMessages(messages, users = null, nicknames = null, rea
             return `
                 <div class="chat-message own" id="msg-${msg.id}">
                     <div class="chat-message-content">
-                        ${replyHTML}
                         <div class="chat-message-footer">
                             <span class="chat-message-bubble-time">${time}</span>
                             <div class="chat-message-bubble" data-message-id="${msg.id}">
+                                ${replyHTML}
                                 ${escapeHtml(msg.text)}
                             </div>
                         </div>
@@ -1597,9 +1597,9 @@ async function displayChatMessages(messages, users = null, nicknames = null, rea
                                 <span class="chat-message-author">${escapeHtml(displayName)}</span>
                             </div>
                         ` : ''}
-                        ${replyHTML}
                         <div class="chat-message-footer">
                             <div class="chat-message-bubble" data-message-id="${msg.id}">
+                                ${replyHTML}
                                 ${escapeHtml(msg.text)}
                             </div>
                             <span class="chat-message-bubble-time">${time}</span>
