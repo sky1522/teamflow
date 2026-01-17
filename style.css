@@ -1124,10 +1124,6 @@ body {
     color: var(--text-secondary);
 }
 
-.chat-message.own .chat-message-header {
-    display: none;
-}
-
 /* 메시지 하단 (시간 + 읽음 표시) */
 .chat-message-footer {
     display: flex;

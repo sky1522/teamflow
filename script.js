@@ -1318,12 +1318,13 @@ async function loadChatMessages() {
     if (!currentTeam) return;
     
     try {
-        const [messagesSnapshot, usersSnapshot] = await Promise.all([
+        const [messagesSnapshot, usersSnapshot, nicknamesSnapshot] = await Promise.all([
             database.ref('chat/' + currentTeam.id)
                 .orderByChild('timestamp')
                 .limitToLast(50)
                 .once('value'),
-            database.ref('users').once('value')
+            database.ref('users').once('value'),
+            database.ref('teamNicknames/' + currentTeam.id).once('value')
         ]);
         
         const messages = [];
@@ -1332,15 +1333,16 @@ async function loadChatMessages() {
         });
         
         const users = usersSnapshot.val() || {};
+        const nicknames = nicknamesSnapshot.val() || {};
         
-        displayChatMessages(messages, users);
+        displayChatMessages(messages, users, nicknames);
         
     } catch (error) {
         console.error('채팅 메시지 로딩 실패:', error);
     }
 }
 
-async function displayChatMessages(messages, users = null) {
+async function displayChatMessages(messages, users = null, nicknames = null) {
     const chatMessages = document.getElementById('chatMessages');
     
     if (messages.length === 0) {
@@ -1350,8 +1352,12 @@ async function displayChatMessages(messages, users = null) {
     
     // users가 없으면 가져오기
     if (!users) {
-        const usersSnapshot = await database.ref('users').once('value');
+        const [usersSnapshot, nicknamesSnapshot] = await Promise.all([
+            database.ref('users').once('value'),
+            database.ref('teamNicknames/' + currentTeam.id).once('value')
+        ]);
         users = usersSnapshot.val() || {};
+        nicknames = nicknamesSnapshot.val() || {};
     }
     
     chatMessages.innerHTML = messages.map((msg, index) => {
@@ -1363,7 +1369,14 @@ async function displayChatMessages(messages, users = null) {
         
         const user = users[msg.userId] || {};
         const profilePhoto = user.profilePhotoURL || null;
-        const userName = msg.userName || user.name || '사용자';
+        const userName = user.name || '사용자';
+        
+        // 닉네임 가져오기
+        const nicknameData = nicknames?.[msg.userId];
+        const nickname = nicknameData?.nickname || null;
+        
+        // 표시할 이름: 이름(닉네임) 형식
+        const displayName = nickname ? `${userName}(${nickname})` : userName;
         
         // 프로필 사진 또는 이니셜
         const avatarContent = profilePhoto 
@@ -1382,7 +1395,13 @@ async function displayChatMessages(messages, users = null) {
             // 내 프로필 정보 가져오기
             const myUser = users[currentUser.uid] || {};
             const myProfilePhoto = myUser.profilePhotoURL || null;
-            const myName = currentUser.displayName || myUser.name || '나';
+            const myName = myUser.name || currentUser.displayName || '나';
+            
+            // 내 닉네임 가져오기
+            const myNicknameData = nicknames?.[currentUser.uid];
+            const myNickname = myNicknameData?.nickname || null;
+            const myDisplayName = myNickname ? `${myName}(${myNickname})` : myName;
+            
             const myAvatarContent = myProfilePhoto 
                 ? `<img src="${myProfilePhoto}" alt="${myName}">` 
                 : myName.charAt(0).toUpperCase();
@@ -1391,6 +1410,11 @@ async function displayChatMessages(messages, users = null) {
             return `
                 <div class="chat-message own">
                     <div class="chat-message-content">
+                        ${!isContinuous ? `
+                            <div class="chat-message-header" style="justify-content: flex-end;">
+                                <span class="chat-message-author">${escapeHtml(myDisplayName)}</span>
+                            </div>
+                        ` : ''}
                         <div class="chat-message-footer">
                             <span class="chat-message-bubble-time">${time}</span>
                             <div class="chat-message-bubble">${escapeHtml(msg.text)}</div>
@@ -1407,7 +1431,7 @@ async function displayChatMessages(messages, users = null) {
                     <div class="chat-message-content">
                         ${!isContinuous ? `
                             <div class="chat-message-header">
-                                <span class="chat-message-author">${escapeHtml(userName)}</span>
+                                <span class="chat-message-author">${escapeHtml(displayName)}</span>
                             </div>
                         ` : ''}
                         <div class="chat-message-footer">
